@@ -1,15 +1,27 @@
 ---
-title: "WorkbookConverter Class — Node.js SDK Reference"
+title: "WorkbookConverter Reference — Sheet JSON Node.js SDK"
 sidebarTitle: "WorkbookConverter"
-description: "WorkbookConverter converts between XLSX buffers and Workbook instances. It handles sheet parsing, block detection, epoch date conversion, and XLSX layout conventions."
+description: "WorkbookConverter converts between XLSX buffers and Workbook instances. It handles sheet parsing, block detection, epoch date conversion, and XLSX layout."
 ---
 
 `WorkbookConverter` is the bridge between the Sheet JSON object model and XLSX files. It uses [SheetJS](https://sheetjs.com/) (`xlsx`) under the hood to read raw spreadsheet bytes or to write SheetJS workbook objects, and it applies a set of layout conventions to map XLSX rows and columns back to `Table` and `List` blocks — and vice versa. In most cases you will not use `WorkbookConverter` directly: the static helpers `Workbook.fromXlsx()` and `Workbook.toXlsx()` are thin wrappers around this class and are the recommended entry points. Use `WorkbookConverter` directly when you need to deserialise into a custom `Workbook` subclass.
 
 ## Import
 
+`WorkbookConverter` is exported from the converters subpath of the package source. The recommended way to access XLSX conversion functionality is through the static methods on `Workbook`:
+
 ```typescript
-import { WorkbookConverter } from '@org-quicko/sheet';
+import { Workbook } from '@org-quicko/sheet';
+
+// Recommended: use the static convenience wrappers
+const workbook = Workbook.fromXlsx(buffer);
+const xlsxWorkbook = Workbook.toXlsx(workbook);
+```
+
+If you need to instantiate `WorkbookConverter` directly (for example to deserialise a custom `Workbook` subclass), import it from its source path:
+
+```typescript
+import { WorkbookConverter } from '@org-quicko/sheet/src/converters';
 ```
 
 ## Constructor
@@ -24,7 +36,7 @@ const converter = new WorkbookConverter();
 
 ### `toWorkbook<T extends Workbook>(fileBuffer, Class)`
 
-Reads an XLSX buffer and returns a fully hydrated instance of the provided `Workbook` subclass (or `Workbook` itself). The method uses SheetJS to parse the raw bytes, walks each sheet to detect blocks, and constructs a JSON representation that is then deserialised via `class-transformer`'s `plainToInstance`.
+An instance method that reads an XLSX buffer and returns a fully hydrated instance of the provided `Workbook` subclass (or `Workbook` itself). The method uses SheetJS to parse the raw bytes, walks each sheet to detect blocks, and constructs a JSON representation that is then deserialised via `class-transformer`'s `plainToInstance`.
 
 <ParamField path="fileBuffer" type="Buffer" required>
   A Node.js `Buffer` containing the raw bytes of an `.xlsx` file.
@@ -42,7 +54,7 @@ Reads an XLSX buffer and returns a fully hydrated instance of the provided `Work
 
 ### `toXlsx(workbook)`
 
-Converts a `Workbook` instance into a SheetJS `XLSX.WorkBook` object. Each `Sheet` becomes an XLSX sheet tab, each `Table` block is written starting with the block name row followed by the header row and then data rows, and each `List` block is written as two-column key/value rows preceded by the block name.
+An instance method that converts a `Workbook` instance into a SheetJS `XLSX.WorkBook` object. Each `Sheet` becomes an XLSX sheet tab, each `Table` block is written starting with the block name row followed by the header row and then data rows, and each `List` block is written as two-column key/value rows preceded by the block name.
 
 <ParamField path="workbook" type="Workbook" required>
   The `Workbook` instance to convert.
@@ -60,7 +72,7 @@ Converts a `Workbook` instance into a SheetJS `XLSX.WorkBook` object. Each `Shee
 
 When reading, the converter scans each sheet row by row and identifies **contiguous non-empty row ranges** as blocks. A row is considered empty if all its cells are `null`. A new block begins when the previous row was empty (or when the first non-empty row is reached) and ends when the next empty row is encountered.
 
-**Block type detection:** the first row of a block range contains the block name. If that name ends with the suffix `"list"` (case-insensitive), the block is parsed as a `List`; otherwise it is parsed as a `Table`.
+**Block type detection:** the first row of a block range contains the block name. If that name ends with the suffix `"list"` (case-insensitive, checked via `name.toLowerCase().endsWith('list')`), the block is parsed as a `List`; otherwise it is parsed as a `Table`.
 
 ### Table Layout
 
@@ -113,7 +125,8 @@ converter.toXlsx(workbook);
 ## Usage Example
 
 ```typescript
-import { WorkbookConverter, Workbook, Sheet, Table, List, Item } from '@org-quicko/sheet';
+import { Workbook, Sheet, Table, List, Item } from '@org-quicko/sheet';
+import { WorkbookConverter } from '@org-quicko/sheet/src/converters';
 import { JSONArray } from '@org-quicko/core';
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';

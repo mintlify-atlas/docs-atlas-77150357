@@ -1,10 +1,10 @@
 ---
-title: "Sheet Tools: Browser App for Schema Building and Data Viewing"
+title: "Sheet Tools: Schema Building and Workbook Viewing in Browser"
 sidebarTitle: "Overview"
-description: "Sheet Tools is a Next.js browser application for building Sheet JSON schemas visually and viewing or editing workbook data without writing code."
+description: "Sheet Tools is a Next.js application for designing Sheet JSON workbook schemas visually and browsing or editing workbook data without writing code."
 ---
 
-Sheet Tools is a browser application bundled with the Sheet JSON repository at `frontend/nextjs/org-quicko-sheet-tools`. It provides two interactive tools — the Schema Builder and the Sheet Visualiser — that let you design workbook structures and inspect workbook data without writing any code. All workbook and schema data is stored locally in your browser's IndexedDB database and never leaves your machine.
+Sheet Tools is a browser application bundled with the Sheet JSON repository at `frontend/nextjs/org-quicko-sheet-tools`. It provides two interactive tools — the Schema Builder and the Sheet Visualiser — that let you design workbook structures and inspect workbook data without writing any code. Data never leaves your machine; all processing happens in the browser.
 
 ## Tech stack
 
@@ -53,10 +53,12 @@ Open the URL printed by the development server (typically `http://localhost:3000
 
 ## Local storage model
 
-Every workbook and schema you create or import is stored in your browser's IndexedDB database under the `sheet-tools-db` database. Each workbook is stored as a separate record keyed by its name, so changes to one workbook can never overwrite data in another. The storage layer uses a minimal promise-based wrapper around the native IndexedDB API — no external persistence library is required.
+The two tools use different persistence strategies:
 
-When the app initialises, it checks for data left by earlier versions of Sheet Tools that used `localStorage` and migrates it into IndexedDB automatically.
+- **Schema Builder** — Every workbook schema you create or import is saved to the browser's IndexedDB database under `sheet-tools-db`. Each workbook is stored as a separate record keyed by its name, so changes to one workbook can never overwrite another. The storage layer uses a minimal promise-based wrapper around the native IndexedDB API with no external persistence library. On startup, the Schema Builder migrates any data left by earlier versions that used `localStorage` into IndexedDB automatically.
+
+- **Sheet Visualiser** — Workbook data is held in memory for the current browser session only. It is not persisted to IndexedDB or any other storage. Export your workbook before closing the tab if you want to reload it later.
 
 <Note>
-  Sheet Tools is a local development aid. Workbooks and schemas are stored in browser IndexedDB only and are not synced to any server or shared across devices. If you clear your browser's site data, all locally saved workbooks will be removed. Export any schemas or workbooks you want to keep before clearing browser storage.
+  Schema Builder workbooks are stored in browser IndexedDB only and are not synced to any server or shared across devices. If you clear your browser's site data, all locally saved workbooks will be removed. Export any schemas you want to keep before clearing browser storage. Sheet Visualiser data is session-only and is lost on page reload.
 </Note>

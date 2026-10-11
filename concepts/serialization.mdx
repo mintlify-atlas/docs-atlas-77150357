@@ -1,7 +1,7 @@
 ---
-title: "Serialization and Deserialization in Sheet JSON"
+title: "Sheet JSON Serialization and Deserialization Guide"
 sidebarTitle: "Serialization"
-description: "Sheet JSON uses class-transformer for TypeScript serialization. Learn how to convert between plain JSON objects and typed class instances using plainToInstance and instanceToPlain."
+description: "Convert Sheet JSON workbooks between plain JSON and typed class instances in TypeScript and Java, using class-transformer and Jackson respectively."
 ---
 
 Sheet JSON provides typed class representations of workbook data in both TypeScript and Java. Converting between a raw JSON string and a live class instance — and back again — is a core operation in any application that reads or writes workbooks. This page explains how that conversion works in each language, which options are required, and how the SDK handles the special cases that plain JSON serializers would get wrong (the block discriminator and the list item format).

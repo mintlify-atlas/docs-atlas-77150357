@@ -1,7 +1,7 @@
 ---
-title: "Item Class — Node.js SDK Reference"
+title: "Item Class Full API Reference — Sheet JSON Node.js SDK"
 sidebarTitle: "Item"
-description: "Item represents a single key-value pair within a List block. It provides typed accessors for boolean, number, and string value conversion."
+description: "Item represents a single key-value pair inside a List block. It provides typed accessors for boolean, number, and string coercion plus an equality check."
 ---
 
 `Item` is the leaf-level building block inside a `List`. It stores a single named value: a `key` string that identifies the property and a `value` of any JSON-compatible type (`string`, `number`, `boolean`, `null`, object, or array). Because JSON values are dynamically typed, `Item` exposes convenience accessors — `getBooleanValue()`, `getNumberValue()`, and `getStringValue()` — that coerce the raw value to the requested primitive type without requiring callers to cast manually. When a `List` is serialised to JSON each `Item` becomes a compact single-property object such as `{"rate": 18}`.
@@ -76,7 +76,7 @@ Coerces the stored value to a `string` using JavaScript's `String()` conversion.
 
 ### `equals(item)`
 
-Compares this `Item` to another for equality. The key comparison is **case-insensitive**; the value comparison is **strict** (`===`).
+Compares this `Item` to another for equality. The key comparison is **case-insensitive** (using `toLowerCase()`); the value comparison is **strict** (`===`).
 
 <ParamField path="item" type="Item" required>
   The other `Item` instance to compare against.
@@ -100,10 +100,14 @@ console.log(rateItem.getNumberValue());   // 18     (number)
 console.log(rateItem.getStringValue());   // '18'
 console.log(rateItem.getBooleanValue());  // true   (non-empty string)
 
-// Null / falsy value
-const emptyItem = new Item('flag', null);
-console.log(emptyItem.getBooleanValue()); // false
-console.log(emptyItem.getNumberValue());  // 0
+// Null value — Number(null) is 0, not NaN
+const nullItem = new Item('flag', null);
+console.log(nullItem.getBooleanValue()); // false
+console.log(nullItem.getNumberValue());  // 0
+
+// Non-numeric string — Number('abc') is NaN
+const badItem = new Item('code', 'abc');
+console.log(badItem.getNumberValue());   // NaN
 
 // Equality check
 const a = new Item('Currency', 'INR');

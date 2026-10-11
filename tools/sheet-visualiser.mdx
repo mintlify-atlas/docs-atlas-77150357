@@ -1,7 +1,7 @@
 ---
 title: "Sheet Visualiser: View and Edit Workbook Data in the Browser"
 sidebarTitle: "Sheet Visualiser"
-description: "The Sheet Visualiser renders Sheet JSON workbook data as interactive tables and lists. Load a workbook, inspect its sheets and blocks, and add or modify data."
+description: "The Sheet Visualiser renders Sheet JSON workbook data as interactive tables and lists. Load a workbook, browse its sheets and blocks, and add data rows."
 ---
 
 The Sheet Visualiser renders a Sheet JSON workbook as a browsable, editable spreadsheet-like interface. Each sheet in the workbook becomes an entry in a collapsible sidebar tree; selecting a block within a sheet displays its data in the main content area — either as a virtualized scrollable grid for table blocks or as a two-column key-value table for list blocks. You can optionally load a JSON Schema alongside the workbook data, and the visualiser will validate every cell and flag violations with inline error indicators.
@@ -31,7 +31,7 @@ The visualiser accepts workbook data in three ways: file upload, pasted JSON, or
   </Step>
   <Step title="Inspect the data">
     - **Table blocks** are rendered as a virtualized scrollable grid using the `VirtualizedTable` component. Column widths are adjustable by dragging the resize handle in the header. Click a cell to select it; double-click to edit the value inline. Press **Enter** to commit the edit or **Escape** to cancel.
-    - **List blocks** are rendered as a two-column key-value table. Each row shows one key-value pair. The key and value columns are both editable by double-clicking.
+    - **List blocks** are rendered as a two-column key-value table. Each row shows one key-value pair. The values are read-only in the grid view; use the **Add Data** dialog in the block header to append new items.
   </Step>
   <Step title="Add data">
     To append new data to the active block, click **Add Data** in the block header. A dialog opens pre-populated with the block's structure:
@@ -78,5 +78,5 @@ This is useful for linking directly to a pre-loaded view from a CI pipeline, doc
 | `null` (in type union) | Permits empty or absent cells for that field |
 
 <Note>
-  The Sheet Visualiser stores loaded workbooks in your browser's IndexedDB database. Data persists across browser sessions and page reloads and is never sent to a server. However, it is local to the device and browser profile — you will not see the same workbooks on a different machine or in a different browser. Clear the **sheet-tools-db** IndexedDB database in your browser's developer tools if you want to remove all stored workbooks.
+  The Sheet Visualiser holds workbook data in memory for the current browser session only. Data is never sent to a server, but it is not persisted across page reloads or browser restarts. Export any workbooks you want to keep before closing the tab. If you want to work with a saved workbook across sessions, export it as a JSON file and re-import it the next time you open the visualiser.
 </Note>

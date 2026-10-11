@@ -1,7 +1,7 @@
 ---
-title: "Sheet Class — Node.js SDK Reference"
+title: "Sheet Class API Reference — Sheet JSON Node.js SDK"
 sidebarTitle: "Sheet"
-description: "The Sheet class represents a single sheet inside a Workbook. It contains an array of Block objects (Table or List) with methods for block management."
+description: "The Sheet class represents a single sheet inside a Workbook. It holds an ordered array of Block objects (Table or List) with methods for block management."
 ---
 
 `Sheet` represents one tab or section inside a `Workbook`. Each sheet owns an ordered collection of `Block` objects — either `Table` or `List` — that hold the actual data. When a Sheet is deserialised from JSON, the `@entity` discriminator on each block entry is used to reconstruct the correct concrete type automatically. `Sheet` extends `BaseObject`, giving it a `name`, an `@entity` value of `"sheet"`, and a `metadata` bag.
@@ -84,7 +84,7 @@ Finds the existing block whose name matches `block.getName()` (case-insensitive)
 
 ### `removeBlock(name)`
 
-Removes the block with the given name from the sheet.
+Removes the first block whose name matches the given string (case-insensitive). If no matching block is found, no change is made.
 
 <ParamField path="name" type="string" required>
   The name of the block to remove. Matching is case-insensitive.
@@ -161,11 +161,11 @@ sheet.addBlock(list);
 
 console.log(sheet.length()); // 2
 
-// Retrieve by name (case-insensitive)
-const block = sheet.getBlock('table');
-console.log(block?.getName()); // 'table'
-
 // Retrieve by index
 const first = sheet.getBlock(0);
 console.log(first.getEntity()); // 'table'
+
+// Retrieve by index (second block)
+const second = sheet.getBlock(1);
+console.log(second.getEntity()); // 'list'
 ```

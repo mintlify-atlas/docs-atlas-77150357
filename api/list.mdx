@@ -1,5 +1,5 @@
 ---
-title: "List Class — Node.js SDK Reference"
+title: "List Class Full API Reference — Sheet JSON Node.js SDK"
 sidebarTitle: "List"
 description: "The List class is a Block that holds an array of Item key-value pairs. In JSON, items serialize as single-property objects like {\"currency\": \"INR\"}."
 ---
@@ -70,7 +70,7 @@ Appends multiple `Item` objects in a single call.
 
 ### `replaceItem(item)`
 
-Finds the existing item whose key matches `item.getKey()` (exact, case-sensitive comparison in the current implementation) and swaps it with the provided instance. If no matching item is found, no change is made.
+Finds the existing item whose key matches `item.getKey()` (exact, case-sensitive comparison) and swaps it with the provided instance. If no matching item is found, no change is made — the item is **not** added.
 
 <ParamField path="item" type="Item" required>
   The replacement `Item`. Its `key` is used to locate the item to replace.
@@ -174,10 +174,10 @@ console.log(list.length()); // 5
 const currency = list.getItem('Currency');
 console.log(currency?.getStringValue()); // 'INR'
 
-// Replace an item
+// Replace an existing item (no-op if key not found)
 list.replaceItem(new Item('currency', 'USD'));
 
-// Remove by key
+// Remove by key (case-insensitive)
 list.removeItem('language');
 
 // Remove by index

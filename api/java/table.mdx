@@ -1,7 +1,7 @@
 ---
-title: "Table Class — Java SDK Reference"
+title: "Table Block Java Class — Sheet JSON Java API Reference"
 sidebarTitle: "Table"
-description: "The Java Table class stores tabular data with a header row and data rows. Use it to build and query structured sheet blocks in the Sheet JSON Java SDK."
+description: "Java Table block for Sheet JSON. Stores a JSONArray header row and ordered data rows, with get, add, replace, remove, and size operations."
 ---
 
 The `Table` class is a concrete `Block` subtype that represents a two-dimensional tabular dataset. It stores an optional header — a `JSONArray` of column labels — and an ordered collection of data rows, each of which is itself a `JSONArray` of cell values. `Table` is annotated with `@JsonTypeName("table")` so it serializes with the discriminator `"name": "table"`, and it integrates with the `Block` polymorphic type hierarchy through the `@JsonSubTypes` mapping on `Block`. Rows and the header use `org.json.JSONArray` as their container type, keeping cell values in their natural JSON representation. Cell values written into a table via `addRow` or `replaceRow` may be strings, numbers, booleans, or `null`, consistent with the JSON data model.

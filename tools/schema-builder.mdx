@@ -1,7 +1,7 @@
 ---
 title: "Sheet Schema Builder: Design Workbook Schemas Visually"
 sidebarTitle: "Schema Builder"
-description: "The Sheet Schema Builder lets you define a workbook's sheets, tables, and lists interactively and export the resulting JSON Schema for use with the code generators."
+description: "Use the Sheet Schema Builder to define sheets, tables, and lists visually, then export the JSON Schema for the Node.js or Java code generators."
 ---
 
 The Sheet Schema Builder is a visual editor for designing Sheet JSON workbook schemas. Rather than writing JSON Schema by hand, you can create workbooks, add sheets, and configure table or list blocks through a point-and-click interface. When you are satisfied with the structure, you export a JSON Schema file that can be fed directly into the `schema-to-objects` command (Node.js) or the `schema-to-pojo` Maven plugin (Java) to generate typed classes for your application.
@@ -60,6 +60,16 @@ Additional constraints available for fields include `minLength`, `maxLength`, `m
     To continue editing a schema you created previously, click **Import Schema** and either paste the JSON Schema text or upload the file. The builder reconstructs the workbook, sheets, and blocks from the schema and sets it as the active workbook. If a workbook with the same name already exists, a confirmation dialog asks whether to overwrite it.
   </Step>
 </Steps>
+
+## URL-based schema import
+
+The Schema Builder accepts a `schema_url` query parameter. When the parameter is present in the URL, the page fetches the schema from that URL and imports it automatically on load:
+
+```
+/sheet-schema-builder?schema_url=https://example.com/schema.json
+```
+
+If the fetched schema's workbook name matches an existing workbook in the store, a confirmation dialog asks whether to overwrite it. This is useful for linking directly to a pre-loaded schema from external tooling or documentation.
 
 ## Using the exported schema with generators
 

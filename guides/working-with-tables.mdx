@@ -1,7 +1,7 @@
 ---
-title: "Working with Tables in Sheet JSON"
+title: "Sheet JSON Tables: Create, Read, and Modify Data Rows"
 sidebarTitle: "Tables"
-description: "Create, read, modify, and query Table blocks using the Sheet JSON TypeScript and Java SDKs. Covers header management, row CRUD, and column views."
+description: "Create, read, modify, and query Table blocks with the Sheet JSON TypeScript and Java SDKs. Covers header management, row CRUD, and column views."
 ---
 
 A `Table` is the primary block type in Sheet JSON for representing two-dimensional, columnar data. It stores a header row that names each column and an ordered list of data rows, where every row is a flat array of values aligned to that header. Tables belong to a `Sheet`, and a sheet can hold multiple table blocks side by side. This guide walks through every method on the `Table` class in both TypeScript and Java.
@@ -15,7 +15,7 @@ A `Table` is the primary block type in Sheet JSON for representing two-dimension
     In practice the simplest way to create a named table and attach it to a sheet is:
 
     ```typescript
-    import { Workbook, Sheet, Table } from "@org-quicko/sheet-core";
+    import { Workbook, Sheet, Table } from "@org-quicko/sheet";
     import { JSONArray } from "@org-quicko/core";
 
     // 1. Build the table

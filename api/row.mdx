@@ -1,7 +1,7 @@
 ---
-title: "Row Class — Node.js SDK Reference"
+title: "Row Class Full API Reference — Sheet JSON Node.js SDK"
 sidebarTitle: "Row"
-description: "Row extends JSONArray and represents a single data row in a Table block. Use it to pass strongly-typed row data to Table methods."
+description: "Row extends JSONArray from @org-quicko/core and represents one data row in a Table. Use it to pass strongly-typed row data to Table.addRow() and addRows()."
 ---
 
 `Row` is a thin, strongly-typed subclass of `JSONArray` (from `@org-quicko/core`) that represents a single data row inside a `Table`. Extending `JSONArray` means that a `Row` is also a standard JavaScript `Array`, so all built-in array methods — `push`, `pop`, `map`, `filter`, `forEach`, and so on — work on it directly. The primary purpose of the `Row` class is to give callers an explicit, named type when constructing row data to pass to `Table.addRow()` or `Table.addRows()`, making call sites easier to read and type-check.
@@ -75,8 +75,8 @@ table.addRows([row2, row3]);
 console.log(table.length()); // 3
 
 // Row is an Array — standard methods work
-const salaries = table.getRow(0);
-console.log(salaries[2]); // 120000
+const firstRow = table.getRow(0);
+console.log(firstRow[2]); // 120000
 
 // Iterate over a Row
 row1.forEach((cell, idx) => {

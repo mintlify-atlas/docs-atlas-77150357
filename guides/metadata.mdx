@@ -1,7 +1,7 @@
 ---
-title: "Using Metadata on Sheet JSON Entities"
+title: "Adding Metadata to Sheet JSON Workbooks and Blocks"
 sidebarTitle: "Metadata"
-description: "Every Sheet JSON entity — Workbook, Sheet, Table, and List — supports an optional metadata map for storing arbitrary key-value properties alongside your data."
+description: "Every Sheet JSON entity — Workbook, Sheet, Table, and List — supports an optional metadata map for attaching arbitrary key-value properties to your data."
 ---
 
 Every Sheet JSON entity inherits from `BaseObject`, which exposes a `metadata` field: an optional `JSONObject` (key-value map) that travels with the entity through serialisation and deserialisation without affecting the core data structure. Metadata is the right place for concerns that are orthogonal to the data itself — audit trails, data provenance, version tags, processing flags, or any custom label your application needs to attach to a workbook, sheet, or block.
@@ -35,7 +35,7 @@ getMetadata(): JSONObject
 
 ### `setMetadata(value)`
 
-Replaces the entire metadata map with a new `JSONObject`.
+Replaces the entire metadata map with a new `JSONObject`. Available in TypeScript only — the Java `BaseObject` exposes `getMetadata()` for mutation via `put()` but does not have a `setMetadata` method.
 
 ```typescript
 setMetadata(value: JSONObject): void
@@ -48,7 +48,7 @@ setMetadata(value: JSONObject): void
 <Tabs>
   <Tab title="TypeScript">
     ```typescript
-    import { Workbook, Sheet, Table } from "@org-quicko/sheet-core";
+    import { Workbook, Sheet, Table } from "@org-quicko/sheet";
     import { JSONObject, JSONArray } from "@org-quicko/core";
 
     // --- Workbook metadata ---

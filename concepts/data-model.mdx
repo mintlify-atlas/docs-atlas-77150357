@@ -1,7 +1,7 @@
 ---
 title: "Sheet JSON Data Model: Workbooks, Sheets, and Blocks"
 sidebarTitle: "Data Model"
-description: "Sheet JSON organizes data in a three-level hierarchy: a Workbook contains Sheets, and each Sheet contains Table or List blocks. Learn how each entity is structured."
+description: "Sheet JSON organizes data as a three-level hierarchy: Workbook, Sheets, and Table or List blocks. Each entity shares a common BaseObject foundation."
 ---
 
 Sheet JSON represents spreadsheet data as a structured, portable JSON document. Every piece of data lives inside a three-level hierarchy — a **Workbook** at the top, **Sheets** in the middle, and **Blocks** (either Tables or Lists) at the leaf level. Each entity carries a discriminator field (`@entity`) and a human-readable `name`, making it straightforward to reference, validate, and transform workbook data in any language.
@@ -189,5 +189,9 @@ The `SheetJsonEntityType` enum defines the canonical string values for `@entity`
 | `SheetJsonEntityType.SHEET` | `"sheet"` |
 | `SheetJsonEntityType.TABLE` | `"table"` |
 | `SheetJsonEntityType.LIST` | `"list"` |
+| `SheetJsonEntityType.ISSUE_ROW` | `"table.issue_row"` |
+| `SheetJsonEntityType.ISSUE_TABLE` | `"table.issue_table"` |
+| `SheetJsonEntityType.ISSUE_ROW_FOR_LIST` | `"list.issue_row"` |
+| `SheetJsonEntityType.ISSUE_TABLE_FOR_LIST` | `"list.issue_table"` |
 
-These are the only valid discriminator values for top-level Sheet JSON entities. The enum also defines internal validation types (`ISSUE_ROW`, `ISSUE_TABLE`, etc.) used by the SDK's validator — these are not used in workbook JSON documents.
+The first four values are the valid discriminators for workbook JSON documents. The `ISSUE_*` values are used internally by the SDK's validator to annotate validation results — they do not appear in regular workbook JSON.

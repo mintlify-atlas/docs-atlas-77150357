@@ -1,7 +1,7 @@
 ---
-title: "Import and Export XLSX Files with Sheet JSON"
+title: "Importing and Exporting XLSX Files with Sheet JSON"
 sidebarTitle: "XLSX Import/Export"
-description: "Convert between Excel .xlsx files and Sheet JSON workbooks using Workbook.fromXlsx and Workbook.toXlsx. Learn how the converter maps sheets, tables, and lists."
+description: "Convert Excel .xlsx files to and from Sheet JSON workbooks using Workbook.fromXlsx and toXlsx. Covers block detection, layout rules, and date handling."
 ---
 
 Sheet JSON provides first-class support for reading and writing Excel `.xlsx` files through two static methods on the `Workbook` class: `Workbook.fromXlsx` and `Workbook.toXlsx`. Under the hood these methods delegate to `WorkbookConverter`, which is built on top of the [SheetJS](https://sheetjs.com/) (`xlsx`) library. This means any `.xlsx` file that SheetJS can parse can be converted into a fully typed Sheet JSON workbook — and any Sheet JSON workbook can be written back to a binary `.xlsx` buffer.
@@ -28,14 +28,14 @@ static fromXlsx(buffer: Buffer): Workbook
 
 ### `Workbook.toXlsx(workbook)`
 
-Converts a `Workbook` instance into a SheetJS workbook object. Pass the result to `XLSX.write` or `XLSX.writeFile` to produce a binary buffer or save to disk.
+Converts a `Workbook` instance into a SheetJS workbook object. Pass the result to `XLSX.writeFile` to save to disk, or to `XLSX.write` to produce a binary buffer.
 
 ```typescript
 static toXlsx(workbook: Workbook): XLSX.WorkBook
 ```
 
 | Parameter  | Type       | Description                        |
-|------------|------------|------------------------------------|
+|------------|------------|-------------------------------------|
 | `workbook` | `Workbook` | The Sheet JSON workbook to convert. |
 
 **Returns** — a SheetJS `WorkBook` object.
@@ -110,10 +110,10 @@ Excel enforces a hard limit of **31 characters** on sheet tab names. The convert
 
 <Steps>
   <Step title="Install dependencies">
-    The XLSX functionality requires the `xlsx` package. It is listed as a peer dependency of `@org-quicko/sheet-core`.
+    The XLSX functionality requires the `xlsx` package. It is listed as a peer dependency of `@org-quicko/sheet`.
 
     ```bash
-    npm install @org-quicko/sheet-core xlsx
+    npm install @org-quicko/sheet xlsx
     ```
   </Step>
 
@@ -122,7 +122,7 @@ Excel enforces a hard limit of **31 characters** on sheet tab names. The convert
       <Tab title="TypeScript">
         ```typescript
         import * as fs from "fs";
-        import { Workbook, Table, List, Item } from "@org-quicko/sheet-core";
+        import { Workbook, Table, List, Item } from "@org-quicko/sheet";
 
         // Read the raw file bytes
         const buffer = fs.readFileSync("./data/report.xlsx");
@@ -177,7 +177,7 @@ Excel enforces a hard limit of **31 characters** on sheet tab names. The convert
         ```typescript
         import * as XLSX from "xlsx";
         import * as fs from "fs";
-        import { Workbook, Sheet, Table } from "@org-quicko/sheet-core";
+        import { Workbook, Sheet, Table } from "@org-quicko/sheet";
         import { JSONArray } from "@org-quicko/core";
 
         // Build a workbook programmatically

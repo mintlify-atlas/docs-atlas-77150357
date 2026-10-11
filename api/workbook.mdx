@@ -1,7 +1,7 @@
 ---
-title: "Workbook Class — Node.js SDK Reference"
+title: "Workbook Class API Reference — Sheet JSON Node.js SDK"
 sidebarTitle: "Workbook"
-description: "The Workbook class is the top-level container in Sheet JSON. It holds an array of Sheet objects and provides methods to get, add, replace, and remove sheets."
+description: "The Workbook class is the root container in Sheet JSON. It holds an ordered array of Sheet objects with methods to get, add, replace, and remove sheets."
 ---
 
 `Workbook` is the root object in the Sheet JSON data model. Every file or payload begins with a single `Workbook` instance that owns an ordered collection of `Sheet` objects. You can build a workbook programmatically by constructing and adding sheets, or you can hydrate one directly from an XLSX buffer using the static `fromXlsx` helper. The class extends `BaseObject`, so it also carries a `name`, an `@entity` discriminator, and an optional freeform `metadata` bag.
@@ -179,7 +179,6 @@ import * as fs from 'fs';
 const workbook = new Workbook();
 
 const sheet = new Sheet();
-// (set sheet name via metadata or subclass reflection)
 
 const table = new Table();
 table.setHeader(new JSONArray(['name', 'score']));
@@ -191,7 +190,7 @@ workbook.addSheet(sheet);
 
 console.log(workbook.length()); // 1
 
-// Round-trip through XLSX
+// Convert to XLSX
 const xlsxWorkbook = Workbook.toXlsx(workbook);
 
 // Parse from an existing file

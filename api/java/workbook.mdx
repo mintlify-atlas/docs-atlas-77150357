@@ -1,7 +1,7 @@
 ---
-title: "Workbook Class — Java SDK Reference"
+title: "Workbook Java Class — Sheet JSON Java API Reference"
 sidebarTitle: "Workbook"
-description: "The Java Workbook class is the top-level Sheet JSON container. Jackson-annotated bean for serialization. Provides sheet management methods for get, add, replace, and remove."
+description: "Top-level Sheet JSON container class in Java. Manages an ordered list of Sheet objects with get, add, replace, and remove operations."
 ---
 
 The `Workbook` class is the root container of the Sheet JSON data model. It holds an ordered list of `Sheet` objects and serves as the entry point for building, reading, and manipulating structured spreadsheet data in Java. `Workbook` is a Jackson-annotated bean annotated with `@JsonTypeName("workbook")`, which means it serializes to and deserializes from JSON with a `"name": "workbook"` discriminator property. It extends `BaseObject`, which provides inherited `name`, `entity`, and `metadata` fields. Instances are created with the default no-argument constructor and can be round-tripped through JSON using the bundled `JsonMapper`.
@@ -60,9 +60,11 @@ java.util.List<Sheet> sheets = workbook.getSheets();
 
 ---
 
-### `getSheet(int index)`
+### `getSheet(int index)` *(protected)*
 
 Retrieves the sheet at the specified zero-based position.
+
+<Note>This method is declared `protected`. It is accessible from within the class and its subclasses. Use `getSheets().get(index)` for direct access from external code.</Note>
 
 <ParamField path="index" type="int">
   Zero-based index of the sheet to retrieve.
@@ -73,14 +75,16 @@ Retrieves the sheet at the specified zero-based position.
 **Throws:** `ArrayIndexOutOfBoundsException` if `index` is greater than or equal to the number of sheets.
 
 ```java
-Sheet first = workbook.getSheet(0);
+Sheet first = workbook.getSheets().get(0);
 ```
 
 ---
 
-### `getSheet(String name)`
+### `getSheet(String name)` *(protected)*
 
 Retrieves a sheet by its name using a case-insensitive comparison.
+
+<Note>This method is declared `protected`. Use `getSheets()` and iterate for external access.</Note>
 
 <ParamField path="name" type="String">
   The name of the sheet to look up. Comparison is case-insensitive.
@@ -89,17 +93,17 @@ Retrieves a sheet by its name using a case-insensitive comparison.
 **Returns:** `Sheet` — the first sheet whose name matches, or `null` if no match is found.
 
 ```java
-Sheet summary = workbook.getSheet("Summary");
-if (summary != null) {
-    // process sheet
-}
+// From a subclass or internal context:
+Sheet summary = getSheet("Summary");
 ```
 
 ---
 
-### `addSheet(Sheet sheet)`
+### `addSheet(Sheet sheet)` *(protected)*
 
 Appends a single sheet to the end of the workbook's sheet list.
+
+<Note>This method is declared `protected`. Use `getSheets().add(sheet)` from external code, or subclass `Workbook` to expose it.</Note>
 
 <ParamField path="sheet" type="Sheet">
   The `Sheet` instance to append.
@@ -108,15 +112,17 @@ Appends a single sheet to the end of the workbook's sheet list.
 **Returns:** `void`
 
 ```java
-Sheet sheet = new Sheet();
-workbook.addSheet(sheet);
+// From a subclass or internal context:
+addSheet(new Sheet());
 ```
 
 ---
 
-### `addSheets(java.util.List<Sheet> sheets)`
+### `addSheets(java.util.List<Sheet> sheets)` *(protected)*
 
 Appends all sheets from the provided list to the workbook in iteration order.
+
+<Note>This method is declared `protected`. Use `getSheets().addAll(sheets)` from external code.</Note>
 
 <ParamField path="sheets" type="java.util.List<Sheet>">
   A list of `Sheet` instances to append.
@@ -125,8 +131,8 @@ Appends all sheets from the provided list to the workbook in iteration order.
 **Returns:** `void`
 
 ```java
-java.util.List<Sheet> newSheets = java.util.List.of(sheetA, sheetB);
-workbook.addSheets(newSheets);
+// From a subclass or internal context:
+addSheets(java.util.List.of(sheetA, sheetB));
 ```
 
 ---
@@ -149,9 +155,11 @@ workbook.replaceSheet(updatedSheet);
 
 ---
 
-### `removeSheet(int index)`
+### `removeSheet(int index)` *(protected)*
 
 Removes the sheet at the specified zero-based index.
+
+<Note>This method is declared `protected`. Use `getSheets().remove(index)` from external code.</Note>
 
 <ParamField path="index" type="int">
   Zero-based index of the sheet to remove.
@@ -160,7 +168,8 @@ Removes the sheet at the specified zero-based index.
 **Returns:** `void`
 
 ```java
-workbook.removeSheet(0);
+// From a subclass or internal context:
+removeSheet(0);
 ```
 
 ---
@@ -193,6 +202,60 @@ int count = workbook.size(); // e.g. 3
 
 ---
 
+## JsonMapper
+
+`JsonMapper` is the pre-configured Jackson mapper for Sheet JSON serialization and deserialization. It extends `tools.jackson.databind.json.JsonMapper` and applies these defaults:
+
+- Registers `JsonOrgModule` so `org.json.JSONObject` and `JSONArray` are handled natively.
+- Enables `USE_BIG_DECIMAL_FOR_FLOATS` — floating-point JSON numbers deserialize to `BigDecimal`.
+- Enables `USE_BIG_INTEGER_FOR_INTS` — integer JSON numbers deserialize to `BigInteger`.
+- Disables automatic visibility of getter, is-getter, and setter methods so only `@JsonProperty`-annotated fields are serialized.
+
+```java
+import in.org.quicko.sheet.mapper.JsonMapper;
+import in.org.quicko.sheet.beans.Workbook;
+
+JsonMapper mapper = new JsonMapper();
+
+// Serialize
+String json = mapper.writeValueAsString(workbook);
+
+// Deserialize
+Workbook restored = mapper.readValue(json, Workbook.class);
+```
+
+---
+
+## WorkbookUtil
+
+`WorkbookUtil` provides a static utility method to convert a `Workbook` into an Apache POI `XSSFWorkbook` (XLSX format).
+
+### `WorkbookUtil.toExcel(Workbook workbook)`
+
+Converts a `Workbook` object into an `XSSFWorkbook`. Each `Sheet` becomes an XLSX sheet tab. `Table` blocks are rendered with a title row, a header row, and data rows. `List` blocks are rendered as two-column key-value rows.
+
+<ParamField path="workbook" type="Workbook">
+  The `Workbook` instance to convert.
+</ParamField>
+
+**Returns:** `org.apache.poi.xssf.usermodel.XSSFWorkbook` — the resulting Apache POI workbook.
+
+**Throws:** `java.io.IOException` if an error occurs during conversion.
+
+```java
+import in.org.quicko.sheet.utils.WorkbookUtil;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import java.io.FileOutputStream;
+
+XSSFWorkbook excelWorkbook = WorkbookUtil.toExcel(workbook);
+try (FileOutputStream fos = new FileOutputStream("output.xlsx")) {
+    excelWorkbook.write(fos);
+}
+excelWorkbook.close();
+```
+
+---
+
 ## Full example
 
 The following example builds a workbook, serializes it to JSON with `JsonMapper`, and then deserializes it back.
@@ -219,7 +282,7 @@ public class WorkbookExample {
         table.addRow(new JSONArray(java.util.List.of("Bob",   25, "London")));
 
         sheet.addBlock(table);
-        workbook.addSheet(sheet);
+        workbook.getSheets().add(sheet);
 
         // Serialize to JSON
         JsonMapper mapper = new JsonMapper();

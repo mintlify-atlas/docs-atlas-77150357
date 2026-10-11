@@ -1,7 +1,7 @@
 ---
-title: "Sheet JSON Wire Format and JSON Structure"
+title: "Sheet JSON Wire Format: Structure and Field Reference"
 sidebarTitle: "JSON Structure"
-description: "Learn the exact JSON shape of a Sheet JSON workbook — required fields, discriminator values, table row alignment, list item format, and metadata conventions."
+description: "Reference for the Sheet JSON wire format — discriminator values, row alignment, list item encoding, epoch timestamp convention, and metadata extension."
 ---
 
 Sheet JSON follows a precise wire format. Every entity has required fields, and the exact spelling and casing of those fields is what the SDK's serializer and deserializer rely on. This page describes each required and optional field, shows how tables and lists encode their data, and explains two important conventions — the epoch timestamp format and the `metadata` extension point.
@@ -269,7 +269,7 @@ All four entity types support an optional `metadata` field. Its value is a plain
 
 The following document illustrates every structural rule described on this page.
 
-```json
+```jsonc
 {
   "@entity": "workbook",          // required discriminator
   "name": "report_workbook",      // required workbook name

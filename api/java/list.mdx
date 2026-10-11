@@ -1,7 +1,7 @@
 ---
-title: "List Class — Java SDK Reference"
+title: "List Block Java Class — Sheet JSON Java API Reference"
 sidebarTitle: "List"
-description: "The Java List class is a Sheet JSON Block containing key-value Item pairs. Items serialize as single-property JSON objects. Provides full CRUD access for items."
+description: "Java List block storing typed key-value Item pairs. Supports Boolean, numeric, and String typed addItem overloads and full CRUD access."
 ---
 
 The `List` class is a concrete `Block` subtype that stores an ordered collection of `Item` objects, where each `Item` is a strongly-typed key-value pair. Unlike a `Table`, which models data in rows and columns, a `List` is suited for named scalar values — for example, a set of report parameters, configuration entries, or financial summary fields. `List` is annotated with `@JsonTypeName("list")` so it serializes with the discriminator `"name": "list"`. Items serialize as single-property JSON objects through a custom Jackson serializer/deserializer pair (`CustomItemSerializer` / `CustomItemDeserializer`), meaning each `Item` appears in JSON as `{ "key": value }`. The `List` class supports typed convenience overloads of `addItem` for all common Java numeric, boolean, and string types, making it straightforward to populate without constructing `Item` objects manually.

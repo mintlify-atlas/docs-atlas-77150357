@@ -1,5 +1,5 @@
 ---
-title: "Table Class — Node.js SDK Reference"
+title: "Table Class API Reference — Sheet JSON Node.js SDK"
 sidebarTitle: "Table"
 description: "The Table class is a Block that holds a header array and a rows array. Use it to store and query structured tabular data within a Sheet."
 ---
@@ -54,7 +54,7 @@ Returns all data rows as a `JSONArray` of `JSONArray` entries. Each inner array 
 
 ### `getRow(index)`
 
-Returns a **copy** of the row at the given zero-based index.
+Returns a **copy** of the row at the given zero-based index. The copy is constructed as `new JSONArray(...)` from the original row data.
 
 <ParamField path="index" type="number" required>
   Zero-based index of the row to retrieve.
@@ -92,7 +92,7 @@ Appends multiple data rows in one call.
 
 ### `popRow()`
 
-Removes the last data row from the table. Has no effect if the table is empty.
+Removes the last data row from the table. Has no effect if the table is empty. Does not return the removed row.
 
 **Returns:** `void`
 
@@ -200,7 +200,7 @@ table.addRow(new JSONArray(['Carol', 'Engineering', 130_000]));
 
 console.log(table.length()); // 3
 
-// Read a specific row
+// Read a specific row (returns a copy)
 const row = table.getRow(1);
 console.log(row); // JSONArray ['Bob', 'Marketing', 95000]
 

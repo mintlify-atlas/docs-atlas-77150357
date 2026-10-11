@@ -1,7 +1,7 @@
 ---
-title: "Get Started with Sheet JSON in Node.js"
+title: "Quickstart: Build Your First Workbook with Sheet JSON"
 sidebarTitle: "Quickstart"
-description: "Install @org-quicko/sheet and build your first workbook with a table and list block in under five minutes."
+description: "Install @org-quicko/sheet and build a workbook with a table and a list block in TypeScript. From install to a serialized JSON document in minutes."
 ---
 
 This guide walks you through installing the `@org-quicko/sheet` package and building a workbook programmatically from scratch. By the end you will have a fully serialized Sheet JSON document logged to your console, complete with a payment table and a settings list.
@@ -16,30 +16,30 @@ Before you begin, make sure you have the following installed:
 
 ## Installation
 
-Install `@org-quicko/sheet` using your preferred package manager. The package bundles `class-transformer`, `class-validator`, and `reflect-metadata` as peer dependencies — all three are required at runtime.
+Install `@org-quicko/sheet` using your preferred package manager. The package bundles `class-transformer`, `class-validator`, and `reflect-metadata` as regular dependencies — all three are installed automatically.
 
 <CodeGroup>
 
 ```bash npm
-npm install @org-quicko/sheet reflect-metadata
+npm install @org-quicko/sheet
 ```
 
 ```bash yarn
-yarn add @org-quicko/sheet reflect-metadata
+yarn add @org-quicko/sheet
 ```
 
 ```bash pnpm
-pnpm add @org-quicko/sheet reflect-metadata
+pnpm add @org-quicko/sheet
 ```
 
 </CodeGroup>
 
 <Note>
-  `@org-quicko/sheet` depends on `class-transformer`, `class-validator`, and
-  `reflect-metadata`. The `reflect-metadata` polyfill **must be imported once at
-  the very top of your application entry point** before any other import that
-  uses decorators. Failing to do so causes decorator metadata to be undefined at
-  runtime.
+  `@org-quicko/sheet` ships `reflect-metadata` as a bundled dependency, so you
+  do not need to install it separately. However, the `reflect-metadata` polyfill
+  **must be imported once at the very top of your application entry point**
+  before any other import that uses decorators. Failing to do so causes decorator
+  metadata to be undefined at runtime.
 </Note>
 
 ## Build Your First Workbook
@@ -61,11 +61,10 @@ const workbook = new Workbook();
 
 ### Add a Sheet
 
-Create a `Sheet` instance and name it. Sheets are the direct children of a workbook and act as containers for your table and list blocks.
+Create a `Sheet` instance and add it to the workbook. Sheets are the direct children of a workbook and act as containers for your table and list blocks.
 
 ```typescript
 const sheet = new Sheet();
-sheet.setName('summary_sheet');
 ```
 
 ### Add a Table Block
@@ -74,7 +73,6 @@ A `Table` has a `header` (a `JSONArray` of column name strings) and `rows` (each
 
 ```typescript
 const table = new Table();
-table.setName('payment_table');
 table.setHeader(new JSONArray(['reference', 'amount']));
 table.addRow(new JSONArray(['PAY-1', 150]));
 ```
@@ -85,7 +83,6 @@ A `List` holds key-value pairs as `Item` instances. Each `Item` is constructed w
 
 ```typescript
 const list = new List();
-list.setName('settings_list');
 list.addItem(new Item('currency', 'INR'));
 ```
 
@@ -116,21 +113,17 @@ import { JSONArray } from '@org-quicko/core';
 
 // 1. Create workbook
 const workbook = new Workbook();
-workbook.setName('report_workbook');
 
 // 2. Create sheet
 const sheet = new Sheet();
-sheet.setName('summary_sheet');
 
 // 3. Create table block
 const table = new Table();
-table.setName('payment_table');
 table.setHeader(new JSONArray(['reference', 'amount']));
 table.addRow(new JSONArray(['PAY-1', 150]));
 
 // 4. Create list block
 const list = new List();
-list.setName('settings_list');
 list.addItem(new Item('currency', 'INR'));
 
 // 5. Assemble
@@ -148,21 +141,21 @@ Running this file produces the following output:
 ```json
 {
   "@entity": "workbook",
-  "name": "report_workbook",
+  "name": "workbook",
   "sheets": [
     {
       "@entity": "sheet",
-      "name": "summary_sheet",
+      "name": "sheet",
       "blocks": [
         {
           "@entity": "table",
-          "name": "payment_table",
+          "name": "table",
           "header": ["reference", "amount"],
           "rows": [["PAY-1", 150]]
         },
         {
           "@entity": "list",
-          "name": "settings_list",
+          "name": "list",
           "items": [{"currency": "INR"}]
         }
       ]
@@ -170,6 +163,16 @@ Running this file produces the following output:
   ]
 }
 ```
+
+<Note>
+  The `name` field on each entity is derived from the class-level
+  `@Reflect.metadata('name', ...)` decorator, not from a setter method. The
+  base classes (`Workbook`, `Sheet`, `Table`, `List`) always serialize their
+  class default names (`"workbook"`, `"sheet"`, `"table"`, `"list"`). To use
+  custom names such as `"payment_table"` or `"summary_sheet"`, use the
+  [Node.js generator](/generators/nodejs-generator) to generate subclasses
+  where each class's metadata is set to the desired name.
+</Note>
 
 ## Deserializing JSON Back to Classes
 
@@ -183,8 +186,8 @@ import { Workbook } from '@org-quicko/sheet';
 const raw = JSON.parse(jsonString);
 const workbook = plainToInstance(Workbook, raw, { excludeExtraneousValues: true });
 
-const sheet = workbook.getSheet('summary_sheet');
-const table = sheet?.getBlock('payment_table');
+const sheet = workbook.getSheet('sheet');
+const table = sheet?.getBlock('table');
 ```
 
 <Tip>
@@ -196,6 +199,6 @@ const table = sheet?.getBlock('payment_table');
 ## Next Steps
 
 - Explore the full [Node.js SDK reference](/api/workbook) to learn about `getColumn`, `replaceRow`, `removeBlock`, and other mutation helpers.
-- Use the [TypeScript generator](/generators/nodejs-generator) to auto-generate typed workbook classes from a JSON Schema.
+- Use the [TypeScript generator](/generators/nodejs-generator) to auto-generate typed workbook classes with custom names from a JSON Schema.
 - Try the [Java SDK](/api/java/workbook) if you need the same workbook model in a JVM application.
 - Open [Sheet Tools](/tools/overview) in your browser to visually design schemas and inspect workbook data.

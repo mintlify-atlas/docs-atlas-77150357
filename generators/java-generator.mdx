@@ -1,7 +1,7 @@
 ---
 title: "Java Sheet Generator: Maven Plugin for POJO Generation"
 sidebarTitle: "Java Generator"
-description: "in.org.quicko.sheet:generator is a Maven plugin that generates Java POJOs and Jackson mixins from a JSON Schema. Configure it with the schema-to-pojo and excel-to-json goals."
+description: "Add in.org.quicko.sheet:generator as a Maven plugin to generate Java POJOs from a JSON Schema, with goals for POJO generation and Excel or JSON conversion."
 ---
 
 `in.org.quicko.sheet:generator` is a Maven plugin that integrates with the standard Maven build lifecycle to generate Java POJOs and Jackson mixins from a JSON Schema. By binding generation to the `generate-sources` phase, the plugin ensures that typed Java classes for your workbook's sheets, tables, rows, and lists are always produced before compilation — no manual step required. It depends on `in.org.quicko.sheet:core`, which must be installed locally before the generator itself.

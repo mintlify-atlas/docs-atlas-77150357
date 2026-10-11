@@ -1,7 +1,7 @@
 ---
-title: "Sheet Class — Java SDK Reference"
+title: "Sheet Java Bean Class — Sheet JSON Java API Reference"
 sidebarTitle: "Sheet"
-description: "The Java Sheet class represents one sheet within a Workbook. It holds a list of Block objects (Table or List) with full CRUD access via Jackson-annotated methods."
+description: "Java Sheet class representing one named sheet in a Workbook. Holds an ordered list of Table or List Block objects with full CRUD access."
 ---
 
 The `Sheet` class represents a single named sheet within a `Workbook`. Each sheet holds an ordered list of `Block` objects — either `Table` or `List` instances — that organize the sheet's structured data. Like all Sheet JSON beans, `Sheet` is Jackson-annotated with `@JsonTypeName("sheet")` so it serializes with a `"name": "sheet"` discriminator. It extends `BaseObject`, which provides the inherited `@entity`, `name`, and `metadata` properties. Blocks within a sheet can be retrieved by zero-based index or by name, and the sheet exposes full CRUD operations: add, replace, and remove.

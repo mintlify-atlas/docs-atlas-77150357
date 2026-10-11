@@ -1,5 +1,5 @@
 ---
-title: "Working with Lists in Sheet JSON"
+title: "Sheet JSON Lists: Manage Key-Value Item Collections"
 sidebarTitle: "Lists"
 description: "Create and manage List blocks containing key-value Item pairs using the Sheet JSON TypeScript and Java SDKs. Covers item CRUD and serialization behavior."
 ---
@@ -13,7 +13,7 @@ A `List` is a Sheet JSON block that stores an ordered collection of key-value `I
     Instantiate a `List` and attach it to a `Sheet` using `addBlock`:
 
     ```typescript
-    import { Workbook, Sheet, List, Item } from "@org-quicko/sheet-core";
+    import { Workbook, Sheet, List, Item } from "@org-quicko/sheet";
 
     const settings = new List();
 
@@ -53,7 +53,7 @@ Every entry in a `List` is an `Item` — a lightweight key-value pair. The key i
 <Tabs>
   <Tab title="TypeScript">
     ```typescript
-    import { Item } from "@org-quicko/sheet-core";
+    import { Item } from "@org-quicko/sheet";
 
     settings.addItem(new Item("currency", "USD"));
     settings.addItem(new Item("decimal_places", 2));
@@ -162,7 +162,7 @@ Every entry in a `List` is an `Item` — a lightweight key-value pair. The key i
 
 ## Replacing an Item
 
-`replaceItem(item)` finds the existing item with the same key and swaps it for the new `Item`. If no item with that key exists, the behaviour differs slightly between languages — in TypeScript the list is unchanged (the item is not added); use `addItem` first if the key might not exist yet.
+`replaceItem(item)` finds the existing item with the same key and swaps it for the new `Item`. If no item with that key exists, the list is unchanged in both TypeScript and Java — the new item is **not** appended. Use `addItem` first if the key might not exist yet.
 
 <Tabs>
   <Tab title="TypeScript">
@@ -235,7 +235,7 @@ The following end-to-end example builds a settings list that captures currency, 
 <Tabs>
   <Tab title="TypeScript">
     ```typescript
-    import { Workbook, Sheet, List, Item } from "@org-quicko/sheet-core";
+    import { Workbook, Sheet, List, Item } from "@org-quicko/sheet";
 
     // Build list
     const settings = new List();
