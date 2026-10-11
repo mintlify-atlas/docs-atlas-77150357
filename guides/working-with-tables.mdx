@@ -1,0 +1,288 @@
+---
+title: "Working with Tables in Sheet JSON"
+sidebarTitle: "Tables"
+description: "Create, read, modify, and query Table blocks using the Sheet JSON TypeScript and Java SDKs. Covers header management, row CRUD, and column views."
+---
+
+A `Table` is the primary block type in Sheet JSON for representing two-dimensional, columnar data. It stores a header row that names each column and an ordered list of data rows, where every row is a flat array of values aligned to that header. Tables belong to a `Sheet`, and a sheet can hold multiple table blocks side by side. This guide walks through every method on the `Table` class in both TypeScript and Java.
+
+## Creating a Table
+
+<Tabs>
+  <Tab title="TypeScript">
+    Instantiate a `Table`, assign its header, and add it to a `Sheet`. The table's block name is derived from the `@Reflect.metadata("name", ...)` decorator on the class — you set a custom name by decorating your own subclass, or you can set it directly with `setMetadata`.
+
+    In practice the simplest way to create a named table and attach it to a sheet is:
+
+    ```typescript
+    import { Workbook, Sheet, Table } from "@org-quicko/sheet-core";
+    import { JSONArray } from "@org-quicko/core";
+
+    // 1. Build the table
+    const table = new Table();
+    table.setHeader(new JSONArray(["id", "name", "amount", "created_epoch"]));
+
+    // 2. Attach the table to a sheet
+    const sheet = new Sheet();
+    sheet.addBlock(table);
+
+    // 3. Attach the sheet to a workbook
+    const workbook = new Workbook();
+    workbook.addSheet(sheet);
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    import in.org.quicko.sheet.beans.Workbook;
+    import in.org.quicko.sheet.beans.Sheet;
+    import in.org.quicko.sheet.beans.Table;
+    import org.json.JSONArray;
+
+    // 1. Build the table
+    Table table = new Table();
+    table.setHeader(new JSONArray(List.of("id", "name", "amount", "created_epoch")));
+
+    // 2. Attach the table to a sheet
+    Sheet sheet = new Sheet();
+    sheet.addBlock(table);
+
+    // 3. Attach the sheet to a workbook
+    Workbook workbook = new Workbook();
+    workbook.addSheet(sheet);
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  Use `null` for empty cells inside a row array. For example, `new JSONArray(["A001", null, 99.5, null])` represents a row where the second and fourth columns have no value. Passing `null` keeps column alignment intact so that `getColumns()` returns the correct data for every column index.
+</Note>
+
+---
+
+## Adding Rows
+
+<Tabs>
+  <Tab title="TypeScript">
+    Add a single row with `addRow`, or add many rows in one call with `addRows`:
+
+    ```typescript
+    // Add a single row
+    table.addRow(new JSONArray(["A001", "Alice", 1200.50, 1718000000000]));
+
+    // Add multiple rows at once
+    table.addRows([
+      new JSONArray(["A002", "Bob",   850.00, 1718100000000]),
+      new JSONArray(["A003", "Carol", 975.25, 1718200000000]),
+    ]);
+
+    console.log(table.length()); // 3
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    import org.json.JSONArray;
+
+    // Add a single row
+    table.addRow(new JSONArray(List.of("A001", "Alice", 1200.50, 1718000000000L)));
+
+    // Add multiple rows at once
+    JSONArray batch = new JSONArray();
+    batch.put(new JSONArray(List.of("A002", "Bob",   850.00, 1718100000000L)));
+    batch.put(new JSONArray(List.of("A003", "Carol", 975.25, 1718200000000L)));
+    table.addRows(batch);
+
+    System.out.println(table.size()); // 3
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Reading Rows
+
+<Steps>
+  <Step title="Read all rows">
+    `getRows()` returns the underlying `JSONArray` of all row arrays. Iterate over it when you need to process every row.
+
+    <Tabs>
+      <Tab title="TypeScript">
+        ```typescript
+        const rows = table.getRows();
+
+        for (let i = 0; i < rows.length; i++) {
+          console.log(rows.at(i));
+        }
+        ```
+      </Tab>
+      <Tab title="Java">
+        ```java
+        JSONArray rows = table.getRows();
+
+        for (int i = 0; i < rows.length(); i++) {
+          System.out.println(rows.getJSONArray(i));
+        }
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Read a specific row by index">
+    `getRow(index)` returns a copy of the row at the given zero-based index as a `JSONArray`. It throws a `RangeError` (TypeScript) or `ArrayIndexOutOfBoundsException` (Java) if the index is out of bounds.
+
+    <Tabs>
+      <Tab title="TypeScript">
+        ```typescript
+        const firstRow = table.getRow(0);
+        // JSONArray ["A001", "Alice", 1200.50, 1718000000000]
+
+        try {
+          table.getRow(99); // throws RangeError: Index out of bounds: 99
+        } catch (e) {
+          if (e instanceof RangeError) console.error(e.message);
+        }
+        ```
+      </Tab>
+      <Tab title="Java">
+        ```java
+        JSONArray firstRow = table.getRow(0);
+        // ["A001","Alice",1200.5,1718000000000]
+
+        try {
+          table.getRow(99); // throws ArrayIndexOutOfBoundsException
+        } catch (ArrayIndexOutOfBoundsException e) {
+          System.err.println("Index out of bounds: " + e.getMessage());
+        }
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+---
+
+## Modifying Rows
+
+<Tabs>
+  <Tab title="TypeScript">
+    **Replace** an existing row at a given index:
+
+    ```typescript
+    // Overwrite the row at index 1
+    table.replaceRow(1, new JSONArray(["A002", "Bob", 900.00, 1718100000000]));
+    ```
+
+    **Remove** a specific row by index — throws `RangeError` if out of bounds:
+
+    ```typescript
+    table.removeRow(0); // removes the first row
+    ```
+
+    **Pop** the last row without needing to know the index:
+
+    ```typescript
+    table.popRow();
+    ```
+  </Tab>
+  <Tab title="Java">
+    **Replace** an existing row at a given index:
+
+    ```java
+    table.replaceRow(1, new JSONArray(List.of("A002", "Bob", 900.00, 1718100000000L)));
+    ```
+
+    **Remove** a specific row by index:
+
+    ```java
+    table.removeRow(0); // removes the first row
+    ```
+
+    Java's `Table` does not expose a dedicated `popRow()` method; use `removeRow(table.size() - 1)` to remove the last row:
+
+    ```java
+    if (table.size() > 0) {
+      table.removeRow(table.size() - 1);
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Column Views
+
+`getColumns()` is a read-only projection that reorganises the table data into vertical slices. It returns an array of `Column` objects — one per header entry — where:
+
+- `column[0]` is the **header name** for that column.
+- `column[1]` through `column[n]` are the **cell values** for every row at that column index.
+- `column.getColumnHeader()` is a convenience method that returns `column[0]` as a `string`.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    const columns = table.getColumns();
+
+    for (const col of columns) {
+      console.log("Header:", col.getColumnHeader());
+      console.log("Values:", col.slice(1)); // everything after index 0
+    }
+
+    // Example output for the "name" column:
+    // Header: name
+    // Values: ["Alice", "Bob", "Carol"]
+    ```
+  </Tab>
+  <Tab title="Java">
+    The Java SDK does not expose a `getColumns()` equivalent on `Table`. Iterate over the header and rows manually:
+
+    ```java
+    JSONArray header = table.getHeader();
+    for (int col = 0; col < header.length(); col++) {
+      System.out.print("Header: " + header.getString(col) + "  Values: ");
+      for (int row = 0; row < table.size(); row++) {
+        System.out.print(table.getRow(row).get(col) + "  ");
+      }
+      System.out.println();
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Row Count
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    console.log(table.length()); // number of data rows (not including the header)
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    System.out.println(table.size()); // number of data rows
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Serialized JSON Shape
+
+A populated table serialises to the following structure inside a sheet's `blocks` array:
+
+```json
+{
+  "@entity": "table",
+  "name": "table",
+  "header": ["id", "name", "amount", "created_epoch"],
+  "rows": [
+    ["A001", "Alice", 1200.5,  1718000000000],
+    ["A002", "Bob",   900.0,   1718100000000],
+    ["A003", "Carol", 975.25,  1718200000000]
+  ]
+}
+```
+
+<Tip>
+  Name any date/time column with the word `epoch` in its header — for example `created_epoch` or `epoch_updated_at`. The XLSX converter uses this convention to automatically convert ISO date strings to epoch milliseconds on import and back to ISO strings on export, keeping your in-memory data consistently numeric.
+</Tip>

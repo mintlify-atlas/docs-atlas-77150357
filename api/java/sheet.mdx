@@ -1,0 +1,203 @@
+---
+title: "Sheet Class — Java SDK Reference"
+sidebarTitle: "Sheet"
+description: "The Java Sheet class represents one sheet within a Workbook. It holds a list of Block objects (Table or List) with full CRUD access via Jackson-annotated methods."
+---
+
+The `Sheet` class represents a single named sheet within a `Workbook`. Each sheet holds an ordered list of `Block` objects — either `Table` or `List` instances — that organize the sheet's structured data. Like all Sheet JSON beans, `Sheet` is Jackson-annotated with `@JsonTypeName("sheet")` so it serializes with a `"name": "sheet"` discriminator. It extends `BaseObject`, which provides the inherited `@entity`, `name`, and `metadata` properties. Blocks within a sheet can be retrieved by zero-based index or by name, and the sheet exposes full CRUD operations: add, replace, and remove.
+
+## Import
+
+```java
+import in.org.quicko.sheet.beans.Sheet;
+import in.org.quicko.sheet.beans.Block;
+import in.org.quicko.sheet.beans.Table;
+import in.org.quicko.sheet.beans.List;
+```
+
+## Annotation behavior
+
+| Annotation | Value | Effect |
+|---|---|---|
+| `@JsonTypeName` | `"sheet"` | Writes `"name": "sheet"` as the type discriminator |
+| `@JsonTypeInfo` | `Id.NAME` on `"name"` | Reads the `name` field to resolve the concrete type on deserialization |
+| `@JsonIgnoreProperties` | `ignoreUnknown = true` | Extra JSON fields are silently ignored |
+
+The `blocks` field is serialized with `@JsonProperty("blocks")` as a JSON array. Each element is polymorphically deserialized to either `Table` or `List` based on the element's own `name` discriminator, using the `@JsonSubTypes` mapping declared on `Block`.
+
+## Constructor
+
+### `Sheet()`
+
+Creates a new, empty sheet. Calls `super("sheet")` to set the entity type. The internal `blocks` list is lazily initialized on first access.
+
+```java
+Sheet sheet = new Sheet();
+```
+
+## Methods
+
+### `getBlocks()`
+
+Returns the ordered list of all blocks belonging to this sheet. The list is lazily initialized to an empty `ArrayList` if no blocks have been added yet.
+
+**Returns:** `java.util.List<Block>` — the live block list; never `null`.
+
+```java
+java.util.List<Block> blocks = sheet.getBlocks();
+```
+
+---
+
+### `getBlock(int index)`
+
+Retrieves the block at the specified zero-based position.
+
+<ParamField path="index" type="int">
+  Zero-based index of the block to retrieve.
+</ParamField>
+
+**Returns:** `Block` — the block at the given position.
+
+**Throws:** `ArrayIndexOutOfBoundsException` if `index` is greater than or equal to the number of blocks.
+
+```java
+Block block = sheet.getBlock(0);
+```
+
+---
+
+### `getBlock(String name)`
+
+Retrieves a block by its name using a case-insensitive comparison. For `Table` blocks the name is always `"table"`, and for `List` blocks it is always `"list"`, because both derive their `name` from `@JsonTypeName`.
+
+<ParamField path="name" type="String">
+  The name of the block to look up. Comparison is case-insensitive.
+</ParamField>
+
+**Returns:** `Block` — the first block whose name matches, or `null` if none is found.
+
+```java
+Block tableBlock = sheet.getBlock("table");
+if (tableBlock instanceof Table) {
+    Table table = (Table) tableBlock;
+}
+```
+
+---
+
+### `addBlock(Block block)`
+
+Appends a block to the end of the sheet's block list.
+
+<ParamField path="block" type="Block">
+  The `Block` instance to append. Must be a concrete subtype — either `Table` or `List`.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+Table table = new Table();
+sheet.addBlock(table);
+```
+
+---
+
+### `replaceBlock(Block block)`
+
+Replaces the first block whose name matches the name of the supplied block (case-insensitive). If no matching block is found the sheet is left unchanged.
+
+<ParamField path="block" type="Block">
+  The replacement `Block`. Its `getName()` return value identifies which existing block to overwrite.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+Table replacement = new Table();
+// replacement.getName() must match the block being replaced
+sheet.replaceBlock(replacement);
+```
+
+---
+
+### `removeBlock(String name)`
+
+Removes the first block whose name matches the supplied string (case-insensitive). Does nothing if no matching block is found.
+
+<ParamField path="name" type="String">
+  The name of the block to remove. Comparison is case-insensitive.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+sheet.removeBlock("table");
+```
+
+---
+
+### `size()`
+
+Returns the number of blocks currently in the sheet.
+
+**Returns:** `int` — the block count.
+
+```java
+int blockCount = sheet.size();
+```
+
+---
+
+## Full example
+
+The following example builds a sheet with both a `Table` block and a `List` block, then adds it to a workbook.
+
+```java
+import in.org.quicko.sheet.beans.Workbook;
+import in.org.quicko.sheet.beans.Sheet;
+import in.org.quicko.sheet.beans.Table;
+import in.org.quicko.sheet.beans.List;
+import in.org.quicko.sheet.beans.Item;
+import in.org.quicko.sheet.mapper.JsonMapper;
+import org.json.JSONArray;
+
+public class SheetExample {
+
+    public static void main(String[] args) throws Exception {
+
+        Sheet sheet = new Sheet();
+
+        // Add a Table block
+        Table table = new Table();
+        table.setHeader(new JSONArray(java.util.List.of("Product", "Units", "Revenue")));
+        table.addRow(new JSONArray(java.util.List.of("Widget A", 120, 2400.00)));
+        table.addRow(new JSONArray(java.util.List.of("Widget B", 85,  1700.00)));
+        sheet.addBlock(table);
+
+        // Add a List block
+        List metadata = new List();
+        metadata.addItem(new Item("reportDate", "2025-01-01"));
+        metadata.addItem(new Item("currency",   "USD"));
+        sheet.addBlock(metadata);
+
+        System.out.println("Block count: " + sheet.size()); // 2
+
+        // Retrieve the table block by index
+        Table retrievedTable = (Table) sheet.getBlock(0);
+        System.out.println("Header: " + retrievedTable.getHeader());
+
+        // Remove the List block by name
+        sheet.removeBlock("list");
+        System.out.println("Block count after removal: " + sheet.size()); // 1
+
+        // Wrap the sheet in a workbook and serialize
+        Workbook workbook = new Workbook();
+        workbook.addSheet(sheet);
+
+        JsonMapper mapper = new JsonMapper();
+        String json = mapper.writeValueAsString(workbook);
+        System.out.println(json);
+    }
+}
+```

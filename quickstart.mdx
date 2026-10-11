@@ -1,47 +1,201 @@
 ---
-title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+title: "Get Started with Sheet JSON in Node.js"
+sidebarTitle: "Quickstart"
+description: "Install @org-quicko/sheet and build your first workbook with a table and list block in under five minutes."
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
-
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+This guide walks you through installing the `@org-quicko/sheet` package and building a workbook programmatically from scratch. By the end you will have a fully serialized Sheet JSON document logged to your console, complete with a payment table and a settings list.
 
 ## Prerequisites
 
-Before you begin, you must have:
+Before you begin, make sure you have the following installed:
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
+- **Node.js** `>= 8.0.0`
+- A package manager: **npm**, **yarn**, or **pnpm**
+- **TypeScript** (recommended) or a Node.js project configured to run `.ts` files via `ts-node`
 
-## Get started
+## Installation
+
+Install `@org-quicko/sheet` using your preferred package manager. The package bundles `class-transformer`, `class-validator`, and `reflect-metadata` as peer dependencies — all three are required at runtime.
+
+<CodeGroup>
+
+```bash npm
+npm install @org-quicko/sheet reflect-metadata
+```
+
+```bash yarn
+yarn add @org-quicko/sheet reflect-metadata
+```
+
+```bash pnpm
+pnpm add @org-quicko/sheet reflect-metadata
+```
+
+</CodeGroup>
+
+<Note>
+  `@org-quicko/sheet` depends on `class-transformer`, `class-validator`, and
+  `reflect-metadata`. The `reflect-metadata` polyfill **must be imported once at
+  the very top of your application entry point** before any other import that
+  uses decorators. Failing to do so causes decorator metadata to be undefined at
+  runtime.
+</Note>
+
+## Build Your First Workbook
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
 
-    ```bash
-    npm install your-package
-    ```
-  </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+### Create a Workbook
 
-    ```bash
-    your-cli init
-    ```
-  </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+Import `reflect-metadata` first, then import the Sheet JSON classes and instantiate a `Workbook`. The constructor initializes an empty `sheets` array automatically.
 
-    ```bash
-    your-cli start
-    ```
-  </Step>
+```typescript
+import 'reflect-metadata';
+import { instanceToPlain } from 'class-transformer';
+import { Workbook, Sheet, Table, List, Item } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+
+const workbook = new Workbook();
+```
+
+### Add a Sheet
+
+Create a `Sheet` instance and name it. Sheets are the direct children of a workbook and act as containers for your table and list blocks.
+
+```typescript
+const sheet = new Sheet();
+sheet.setName('summary_sheet');
+```
+
+### Add a Table Block
+
+A `Table` has a `header` (a `JSONArray` of column name strings) and `rows` (each row is also a `JSONArray` of values). Values are positionally aligned to the header — `rows[n][i]` belongs to `header[i]`. Use `null` for an empty cell.
+
+```typescript
+const table = new Table();
+table.setName('payment_table');
+table.setHeader(new JSONArray(['reference', 'amount']));
+table.addRow(new JSONArray(['PAY-1', 150]));
+```
+
+### Add a List Block
+
+A `List` holds key-value pairs as `Item` instances. Each `Item` is constructed with a key string and a value. Lists are ideal for configuration data or document-level metadata.
+
+```typescript
+const list = new List();
+list.setName('settings_list');
+list.addItem(new Item('currency', 'INR'));
+```
+
+### Assemble and Serialize to JSON
+
+Add the blocks to the sheet, add the sheet to the workbook, then call `instanceToPlain` from `class-transformer` with `excludeExtraneousValues: true`. This walks the decorated class hierarchy and produces a plain JavaScript object that you can stringify to JSON.
+
+```typescript
+sheet.addBlock(table);
+sheet.addBlock(list);
+workbook.addSheet(sheet);
+
+const json = instanceToPlain(workbook, { excludeExtraneousValues: true });
+console.log(JSON.stringify(json, null, 2));
+```
+
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+## Complete Example
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+Here is the full working TypeScript file combining every step above.
+
+```typescript
+import 'reflect-metadata';
+import { instanceToPlain } from 'class-transformer';
+import { Workbook, Sheet, Table, List, Item } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+
+// 1. Create workbook
+const workbook = new Workbook();
+workbook.setName('report_workbook');
+
+// 2. Create sheet
+const sheet = new Sheet();
+sheet.setName('summary_sheet');
+
+// 3. Create table block
+const table = new Table();
+table.setName('payment_table');
+table.setHeader(new JSONArray(['reference', 'amount']));
+table.addRow(new JSONArray(['PAY-1', 150]));
+
+// 4. Create list block
+const list = new List();
+list.setName('settings_list');
+list.addItem(new Item('currency', 'INR'));
+
+// 5. Assemble
+sheet.addBlock(table);
+sheet.addBlock(list);
+workbook.addSheet(sheet);
+
+// 6. Serialize
+const json = instanceToPlain(workbook, { excludeExtraneousValues: true });
+console.log(JSON.stringify(json, null, 2));
+```
+
+Running this file produces the following output:
+
+```json
+{
+  "@entity": "workbook",
+  "name": "report_workbook",
+  "sheets": [
+    {
+      "@entity": "sheet",
+      "name": "summary_sheet",
+      "blocks": [
+        {
+          "@entity": "table",
+          "name": "payment_table",
+          "header": ["reference", "amount"],
+          "rows": [["PAY-1", 150]]
+        },
+        {
+          "@entity": "list",
+          "name": "settings_list",
+          "items": [{"currency": "INR"}]
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Deserializing JSON Back to Classes
+
+To go the other direction — from a plain JSON object back to typed class instances — use `plainToInstance` from `class-transformer`. The `@entity` discriminator field tells the deserializer which class to hydrate for each block.
+
+```typescript
+import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
+import { Workbook } from '@org-quicko/sheet';
+
+const raw = JSON.parse(jsonString);
+const workbook = plainToInstance(Workbook, raw, { excludeExtraneousValues: true });
+
+const sheet = workbook.getSheet('summary_sheet');
+const table = sheet?.getBlock('payment_table');
+```
+
+<Tip>
+  Use `workbook.getSheet(name)` and `sheet.getBlock(name)` to look up children
+  by name (case-insensitive), or pass a numeric index to retrieve by position.
+  Both methods are available on `Workbook` and `Sheet` respectively.
 </Tip>
+
+## Next Steps
+
+- Explore the full [Node.js SDK reference](/api/workbook) to learn about `getColumn`, `replaceRow`, `removeBlock`, and other mutation helpers.
+- Use the [TypeScript generator](/generators/nodejs-generator) to auto-generate typed workbook classes from a JSON Schema.
+- Try the [Java SDK](/api/java/workbook) if you need the same workbook model in a JVM application.
+- Open [Sheet Tools](/tools/overview) in your browser to visually design schemas and inspect workbook data.

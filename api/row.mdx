@@ -1,0 +1,88 @@
+---
+title: "Row Class — Node.js SDK Reference"
+sidebarTitle: "Row"
+description: "Row extends JSONArray and represents a single data row in a Table block. Use it to pass strongly-typed row data to Table methods."
+---
+
+`Row` is a thin, strongly-typed subclass of `JSONArray` (from `@org-quicko/core`) that represents a single data row inside a `Table`. Extending `JSONArray` means that a `Row` is also a standard JavaScript `Array`, so all built-in array methods — `push`, `pop`, `map`, `filter`, `forEach`, and so on — work on it directly. The primary purpose of the `Row` class is to give callers an explicit, named type when constructing row data to pass to `Table.addRow()` or `Table.addRows()`, making call sites easier to read and type-check.
+
+## Import
+
+```typescript
+import { Row } from '@org-quicko/sheet';
+```
+
+## Inheritance
+
+```text
+Array<JSONValue>
+  └── JSONArray     (@org-quicko/core)
+        └── Row     (@org-quicko/sheet)
+```
+
+## Constructor
+
+### `new Row(row)`
+
+Creates a new `Row` by spreading the provided array of `JSONValue` elements into the underlying `JSONArray`.
+
+<ParamField path="row" type="Array<JSONValue>" required>
+  An array of JSON-compatible values that make up this row. Each element corresponds to one column in the parent `Table`, matched positionally to the table's header.
+</ParamField>
+
+```typescript
+import { Row } from '@org-quicko/sheet';
+
+const row = new Row(['Alice', 'Engineering', 120_000]);
+```
+
+## Inherited Array Methods
+
+Because `Row` extends `Array<JSONValue>`, all native `Array` prototype methods are available:
+
+| Method | Description |
+|--------|-------------|
+| `row[i]` | Access element at index `i` |
+| `row.length` | Number of cells in the row |
+| `row.push(...items)` | Append one or more values |
+| `row.map(fn)` | Transform values into a new array |
+| `row.filter(fn)` | Filter values into a new array |
+| `row.forEach(fn)` | Iterate over values |
+| `row.at(index)` | Access element by relative index |
+
+---
+
+## Usage Example
+
+```typescript
+import { Table, Row } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+
+const table = new Table();
+table.setHeader(new JSONArray(['name', 'department', 'salary']));
+
+// Create typed Row instances
+const row1 = new Row(['Alice', 'Engineering', 120_000]);
+const row2 = new Row(['Bob', 'Marketing', 95_000]);
+const row3 = new Row(['Carol', 'Engineering', 130_000]);
+
+// Add a single row
+table.addRow(row1);
+
+// Add multiple rows at once
+table.addRows([row2, row3]);
+
+console.log(table.length()); // 3
+
+// Row is an Array — standard methods work
+const salaries = table.getRow(0);
+console.log(salaries[2]); // 120000
+
+// Iterate over a Row
+row1.forEach((cell, idx) => {
+  console.log(`Column ${idx}: ${cell}`);
+});
+// Column 0: Alice
+// Column 1: Engineering
+// Column 2: 120000
+```

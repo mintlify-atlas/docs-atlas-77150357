@@ -1,0 +1,116 @@
+---
+title: "Column Class — Node.js SDK Reference"
+sidebarTitle: "Column"
+description: "Column is a view over a table column. The first element is the column header; remaining elements are the row values at that column index."
+---
+
+`Column` is a column-oriented view of data inside a `Table`. It extends the native JavaScript `Array<JSONValue>` and uses a simple convention: the element at index `0` is always the column header (the value from the table's header row at that column position), and every subsequent element is the cell value from the corresponding data row. `Column` instances are produced by `Table.getColumns()` and are not typically constructed directly in application code. They provide a convenient way to iterate over all values in a single column, or to quickly access the column name without separately looking up the header.
+
+## Import
+
+```typescript
+import { Column } from '@org-quicko/sheet';
+```
+
+## Inheritance
+
+```text
+Array<JSONValue>
+  └── Column    (@org-quicko/sheet)
+```
+
+## Constructor
+
+### `new Column(column)`
+
+Creates a new `Column` by spreading the provided array of `JSONValue` elements into the underlying array. By convention the first element should be the column header value.
+
+<ParamField path="column" type="Array<JSONValue>" required>
+  An array whose first element is the column header and whose remaining elements are the row values at this column's position.
+</ParamField>
+
+```typescript
+import { Column } from '@org-quicko/sheet';
+
+// Typically produced by Table.getColumns(), but can be constructed directly:
+const col = new Column(['salary', 120_000, 95_000, 130_000]);
+```
+
+## Instance Methods
+
+### `getColumnHeader()`
+
+Returns the first element of the column array as a string. If the first element is `null`, `undefined`, or any other falsy value, an empty string is returned instead.
+
+**Returns:** `string` — the string form of `this[0]`, or `""` if `this[0]` is absent or falsy.
+
+```typescript
+const col = new Column(['department', 'Engineering', 'Marketing']);
+console.log(col.getColumnHeader()); // 'department'
+```
+
+---
+
+## How Columns Are Obtained
+
+In typical usage you obtain `Column` objects from `Table.getColumns()` rather than constructing them manually. `getColumns()` iterates over the table's header and builds one `Column` per header entry, pushing the header value followed by every row's cell at that column index.
+
+```typescript
+import { Table } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+
+const table = new Table();
+table.setHeader(new JSONArray(['name', 'score']));
+table.addRow(new JSONArray(['Alice', 98]));
+table.addRow(new JSONArray(['Bob', 87]));
+table.addRow(new JSONArray(['Carol', 95]));
+
+const columns = table.getColumns();
+// columns[0] → Column ['name',  'Alice', 'Bob',  'Carol']
+// columns[1] → Column ['score', 98,      87,     95     ]
+```
+
+---
+
+## Usage Example
+
+```typescript
+import { Table } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+
+const table = new Table();
+table.setHeader(new JSONArray(['product', 'units_sold', 'revenue']));
+table.addRow(new JSONArray(['Widget A', 150, 7_500]));
+table.addRow(new JSONArray(['Widget B', 80, 4_000]));
+table.addRow(new JSONArray(['Widget C', 200, 10_000]));
+
+const columns = table.getColumns();
+
+for (const col of columns) {
+  console.log(`--- ${col.getColumnHeader()} ---`);
+  // Skip index 0 (the header) and iterate over data values
+  for (let i = 1; i < col.length; i++) {
+    console.log(col[i]);
+  }
+}
+
+// --- product ---
+// Widget A
+// Widget B
+// Widget C
+// --- units_sold ---
+// 150
+// 80
+// 200
+// --- revenue ---
+// 7500
+// 4000
+// 10000
+
+// Sum a numeric column
+const revenueCol = columns[2];
+const total = revenueCol
+  .slice(1)                              // drop the header
+  .reduce((sum, v) => sum + (v as number), 0);
+console.log('Total revenue:', total);   // 21500
+```

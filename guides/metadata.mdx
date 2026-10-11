@@ -1,0 +1,220 @@
+---
+title: "Using Metadata on Sheet JSON Entities"
+sidebarTitle: "Metadata"
+description: "Every Sheet JSON entity — Workbook, Sheet, Table, and List — supports an optional metadata map for storing arbitrary key-value properties alongside your data."
+---
+
+Every Sheet JSON entity inherits from `BaseObject`, which exposes a `metadata` field: an optional `JSONObject` (key-value map) that travels with the entity through serialisation and deserialisation without affecting the core data structure. Metadata is the right place for concerns that are orthogonal to the data itself — audit trails, data provenance, version tags, processing flags, or any custom label your application needs to attach to a workbook, sheet, or block.
+
+## How Metadata Works
+
+The `metadata` field is lazily initialised. Calling `getMetadata()` on an entity that has never had metadata set will create an empty `JSONObject` in place and return it. You can then call standard `JSONObject` methods to add keys. Alternatively, call `setMetadata(value)` to replace the entire map at once.
+
+Both `getMetadata()` and `setMetadata()` are available on every class that extends `BaseObject`:
+
+| Class | Extends |
+|---|---|
+| `Workbook` | `BaseObject` |
+| `Sheet` | `BaseObject` |
+| `Table` | `Block` → `BaseObject` |
+| `List` | `Block` → `BaseObject` |
+
+The metadata map serialises to JSON as the `"metadata"` key on the entity object and is deserialised back automatically.
+
+---
+
+## API Reference
+
+### `getMetadata()`
+
+Returns the metadata `JSONObject` for the entity. If the internal field is `null`, it is lazily initialised to an empty `JSONObject` before returning.
+
+```typescript
+getMetadata(): JSONObject
+```
+
+### `setMetadata(value)`
+
+Replaces the entire metadata map with a new `JSONObject`.
+
+```typescript
+setMetadata(value: JSONObject): void
+```
+
+---
+
+## Setting Metadata
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    import { Workbook, Sheet, Table } from "@org-quicko/sheet-core";
+    import { JSONObject, JSONArray } from "@org-quicko/core";
+
+    // --- Workbook metadata ---
+    const workbook = new Workbook();
+    workbook.getMetadata().set("created_by", "finance-pipeline");
+    workbook.getMetadata().set("created_epoch", Date.now());
+    workbook.getMetadata().set("version", "2.1.0");
+
+    // --- Sheet metadata ---
+    const sheet = new Sheet();
+    sheet.getMetadata().set("source", "erp-export-2024-06");
+    sheet.getMetadata().set("locale", "en-US");
+    workbook.addSheet(sheet);
+
+    // --- Table metadata ---
+    const table = new Table();
+    table.setHeader(new JSONArray(["id", "name", "amount"]));
+    table.getMetadata().set("row_count_at_import", 0);
+    table.getMetadata().set("validated", false);
+    sheet.addBlock(table);
+
+    // Replace the whole metadata map on the workbook in one call
+    const meta = new JSONObject();
+    meta.set("created_by", "batch-job");
+    meta.set("created_epoch", 1718000000000);
+    workbook.setMetadata(meta);
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    import in.org.quicko.sheet.beans.Workbook;
+    import in.org.quicko.sheet.beans.Sheet;
+    import in.org.quicko.sheet.beans.Table;
+    import org.json.JSONArray;
+    import org.json.JSONObject;
+
+    // --- Workbook metadata ---
+    Workbook workbook = new Workbook();
+    workbook.getMetadata().put("created_by", "finance-pipeline");
+    workbook.getMetadata().put("created_epoch", System.currentTimeMillis());
+    workbook.getMetadata().put("version", "2.1.0");
+
+    // --- Sheet metadata ---
+    Sheet sheet = new Sheet();
+    sheet.getMetadata().put("source", "erp-export-2024-06");
+    sheet.getMetadata().put("locale", "en-US");
+    workbook.addSheet(sheet);
+
+    // --- Table metadata ---
+    Table table = new Table();
+    table.setHeader(new JSONArray(List.of("id", "name", "amount")));
+    table.getMetadata().put("row_count_at_import", 0);
+    table.getMetadata().put("validated", false);
+    sheet.addBlock(table);
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Reading Metadata
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    // Read individual keys
+    const createdBy = workbook.getMetadata().get("created_by") as string;
+    console.log("Created by:", createdBy); // "batch-job"
+
+    const createdAt = workbook.getMetadata().get("created_epoch") as number;
+    console.log("Created at:", new Date(createdAt).toISOString());
+
+    // Check whether a key is present before reading
+    if (table.getMetadata().has("validated")) {
+      const validated = table.getMetadata().get("validated") as boolean;
+      console.log("Validated:", validated); // false
+    }
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    // Read individual keys
+    String createdBy = workbook.getMetadata().getString("created_by");
+    System.out.println("Created by: " + createdBy); // "batch-job"
+
+    long createdAt = workbook.getMetadata().getLong("created_epoch");
+    System.out.println("Created at: " + new java.util.Date(createdAt));
+
+    // Check for key presence
+    if (table.getMetadata().has("validated")) {
+      boolean validated = table.getMetadata().getBoolean("validated");
+      System.out.println("Validated: " + validated); // false
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Serialized JSON Shape
+
+Metadata appears as the `"metadata"` property on the entity in the serialised JSON output. If no metadata has been set, the key is omitted entirely.
+
+```json
+{
+  "@entity": "workbook",
+  "name": "workbook",
+  "metadata": {
+    "created_by": "batch-job",
+    "created_epoch": 1718000000000,
+    "version": "2.1.0"
+  },
+  "sheets": [
+    {
+      "@entity": "sheet",
+      "name": "sheet",
+      "metadata": {
+        "source": "erp-export-2024-06",
+        "locale": "en-US"
+      },
+      "blocks": [
+        {
+          "@entity": "table",
+          "name": "table",
+          "metadata": {
+            "row_count_at_import": 0,
+            "validated": false
+          },
+          "header": ["id", "name", "amount"],
+          "rows": []
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Common Use Cases
+
+<CodeGroup>
+  ```typescript Audit timestamps
+  workbook.getMetadata().set("created_epoch",  Date.now());
+  workbook.getMetadata().set("modified_epoch", Date.now());
+  workbook.getMetadata().set("created_by",     "pipeline-service");
+  ```
+
+  ```typescript Version tagging
+  workbook.getMetadata().set("schema_version", "3");
+  workbook.getMetadata().set("app_version",    "1.4.2");
+  ```
+
+  ```typescript Data source references
+  sheet.getMetadata().set("source_system", "salesforce");
+  sheet.getMetadata().set("source_id",     "rep_2024Q2");
+  sheet.getMetadata().set("exported_epoch", 1718000000000);
+  ```
+
+  ```typescript Processing flags
+  table.getMetadata().set("validated",     true);
+  table.getMetadata().set("row_count",     table.length());
+  table.getMetadata().set("checksum",      "a3f5d9");
+  ```
+</CodeGroup>
+
+<Tip>
+  Store creation timestamps in metadata using the `epoch` naming convention — e.g. `"created_epoch"` — to keep your timestamps as Unix millisecond numbers. This makes them trivial to compare, sort, and format without parsing strings, and the XLSX converter will handle the ISO conversion automatically if you ever export to spreadsheet format.
+</Tip>

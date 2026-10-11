@@ -1,0 +1,115 @@
+---
+title: "Item Class — Node.js SDK Reference"
+sidebarTitle: "Item"
+description: "Item represents a single key-value pair within a List block. It provides typed accessors for boolean, number, and string value conversion."
+---
+
+`Item` is the leaf-level building block inside a `List`. It stores a single named value: a `key` string that identifies the property and a `value` of any JSON-compatible type (`string`, `number`, `boolean`, `null`, object, or array). Because JSON values are dynamically typed, `Item` exposes convenience accessors — `getBooleanValue()`, `getNumberValue()`, and `getStringValue()` — that coerce the raw value to the requested primitive type without requiring callers to cast manually. When a `List` is serialised to JSON each `Item` becomes a compact single-property object such as `{"rate": 18}`.
+
+## Import
+
+```typescript
+import { Item } from '@org-quicko/sheet';
+```
+
+## Constructor
+
+### `new Item(key, value)`
+
+Creates a new `Item` with the given key and value.
+
+<ParamField path="key" type="string" required>
+  The property name for this item.
+</ParamField>
+
+<ParamField path="value" type="JSONValue" required>
+  The value associated with the key. May be any JSON-compatible value: `string`, `number`, `boolean`, `null`, a JSON object, or a JSON array.
+</ParamField>
+
+```typescript
+import { Item } from '@org-quicko/sheet';
+
+const item = new Item('rate', 18);
+```
+
+## Instance Methods
+
+### `getKey()`
+
+Returns the key string for this item.
+
+**Returns:** `string`
+
+---
+
+### `getValue()`
+
+Returns the raw value stored on this item, typed as `JSONValue`.
+
+**Returns:** `JSONValue`
+
+---
+
+### `getBooleanValue()`
+
+Coerces the stored value to a `boolean` using JavaScript's `Boolean()` conversion rules. Falsy values (`0`, `""`, `null`, `false`, `undefined`) return `false`; all other values return `true`.
+
+**Returns:** `boolean`
+
+---
+
+### `getNumberValue()`
+
+Coerces the stored value to a `number` using JavaScript's `Number()` conversion. Returns `NaN` if the value cannot be meaningfully converted (e.g. a non-numeric string).
+
+**Returns:** `number` — the numeric representation of the value, or `NaN` if conversion fails.
+
+---
+
+### `getStringValue()`
+
+Coerces the stored value to a `string` using JavaScript's `String()` conversion.
+
+**Returns:** `string`
+
+---
+
+### `equals(item)`
+
+Compares this `Item` to another for equality. The key comparison is **case-insensitive**; the value comparison is **strict** (`===`).
+
+<ParamField path="item" type="Item" required>
+  The other `Item` instance to compare against.
+</ParamField>
+
+**Returns:** `boolean` — `true` if both the key (case-insensitive) and the value (strict equality) match; `false` otherwise.
+
+---
+
+## Usage Example
+
+```typescript
+import { Item } from '@org-quicko/sheet';
+
+const rateItem = new Item('gst_rate', '18');
+
+// Typed accessors
+console.log(rateItem.getKey());           // 'gst_rate'
+console.log(rateItem.getValue());         // '18'   (string)
+console.log(rateItem.getNumberValue());   // 18     (number)
+console.log(rateItem.getStringValue());   // '18'
+console.log(rateItem.getBooleanValue());  // true   (non-empty string)
+
+// Null / falsy value
+const emptyItem = new Item('flag', null);
+console.log(emptyItem.getBooleanValue()); // false
+console.log(emptyItem.getNumberValue());  // 0
+
+// Equality check
+const a = new Item('Currency', 'INR');
+const b = new Item('currency', 'INR');
+const c = new Item('currency', 'USD');
+
+console.log(a.equals(b)); // true  — key match is case-insensitive
+console.log(a.equals(c)); // false — values differ
+```

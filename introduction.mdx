@@ -1,0 +1,114 @@
+---
+title: "Sheet JSON: Workbook Data as Structured JSON"
+sidebarTitle: "Introduction"
+description: "Sheet JSON is a multi-language SDK for representing spreadsheet workbooks as typed JSON. It ships Node.js and Java libraries, code generators, and a browser-based tooling app."
+---
+
+Sheet JSON is a data format and SDK that represents spreadsheet workbooks as structured, typed JSON. Instead of opaque binary formats, every workbook, sheet, table, and list is expressed as a plain JSON object with a predictable shape — making workbook data portable across languages, services, and automation pipelines without any proprietary parsing.
+
+## Why Sheet JSON?
+
+Spreadsheet data powers a huge amount of business logic — trade books, payment reports, configuration tables — but moving that data between systems is historically painful. Sheet JSON addresses four core problems:
+
+- **Data Portability** — JSON is lightweight and language-independent. Workbook data represented as JSON can be shared, exported, or transformed across any platform that can read a string.
+- **Interoperability** — Applications and APIs that need to handle spreadsheet data programmatically can consume Sheet JSON directly, regardless of the language they are written in.
+- **Automation** — Complex data structures such as large trade books or reconciliation reports can be merged, filtered, and transformed in code without touching a spreadsheet editor.
+- **Standardized Structure** — Headers, rows, sheet names, and block discriminators are all clearly defined fields in a shared schema, so every consumer knows exactly where to look.
+
+## Data Model
+
+Sheet JSON uses a three-level hierarchy. A **Workbook** is the top-level container. Each workbook holds one or more **Sheets**. Each sheet holds one or more **Blocks**, and every block is either a **Table** or a **List**.
+
+| Level | Type | Contains |
+|-------|------|----------|
+| 1 | `Workbook` | One or more `Sheet` objects |
+| 2 | `Sheet` | One or more `Block` objects (`Table` or `List`) |
+| 3 | `Table` | A `header` array and a `rows` array of arrays |
+| 3 | `List` | An `items` array of single-key objects |
+
+A table header is an array of column names. Each row is an array of values positionally aligned to that header — `rows[n][i]` belongs to `header[i]`. Use `null` for an empty cell. A list stores key-value pairs as single-property objects, such as `{"currency": "INR"}`.
+
+<Note>
+  Every workbook, sheet, and block carries an `@entity` field that acts as a
+  type discriminator. The deserializer uses this field to decide which class to
+  instantiate — `"workbook"`, `"sheet"`, `"table"`, or `"list"`. Always include
+  `@entity` when constructing or transmitting Sheet JSON payloads.
+</Note>
+
+Here is a complete workbook with a payment table and a settings list:
+
+```json
+{
+  "@entity": "workbook",
+  "name": "report_workbook",
+  "sheets": [
+    {
+      "@entity": "sheet",
+      "name": "summary_sheet",
+      "blocks": [
+        {
+          "@entity": "table",
+          "name": "payment_table",
+          "header": ["reference", "amount"],
+          "rows": [["PAY-1", 150]]
+        },
+        {
+          "@entity": "list",
+          "name": "settings_list",
+          "items": [{"currency": "INR"}]
+        }
+      ]
+    }
+  ]
+}
+```
+
+The value `150` belongs to the `amount` column because both are at index `1` in their respective arrays. The settings list holds the key `currency` with the value `INR`.
+
+## Packages
+
+Sheet JSON ships five packages and tools across two languages plus a browser app.
+
+<CardGroup cols={2}>
+  <Card
+    title="@org-quicko/sheet"
+    icon="npm"
+    href="/api/workbook"
+  >
+    Node.js / TypeScript library. Read and update workbooks, sheets, tables, and
+    lists; convert workbook JSON into typed class instances and back.
+  </Card>
+  <Card
+    title="@org-quicko/sheet-generator"
+    icon="npm"
+    href="/generators/nodejs-generator"
+  >
+    Node.js CLI generator. Run `schema-to-objects` to generate TypeScript classes
+    from a JSON Schema that describes your workbook's structure.
+  </Card>
+  <Card
+    title="in.org.quicko.sheet:core"
+    icon="java"
+    href="/api/java/workbook"
+  >
+    Java library. Read and update workbook data through Java POJOs; serialize and
+    deserialize workbook JSON using Jackson mixins.
+  </Card>
+  <Card
+    title="in.org.quicko.sheet:generator"
+    icon="java"
+    href="/generators/java-generator"
+  >
+    Maven plugin generator. Configure the `schema-to-pojo` goal to generate Java
+    classes and Jackson mixins from a JSON Schema at build time.
+  </Card>
+  <Card
+    title="Sheet Tools"
+    icon="browser"
+    href="/tools/overview"
+  >
+    Browser application. Use the schema builder to design your workbook's sheets
+    and blocks, export the JSON Schema, and use the visualizer to view or edit
+    live workbook data.
+  </Card>
+</CardGroup>

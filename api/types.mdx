@@ -1,0 +1,171 @@
+---
+title: "SheetJsonEntityType Enum — Node.js SDK Reference"
+sidebarTitle: "Types"
+description: "SheetJsonEntityType is a TypeScript enum of @entity discriminator values used throughout the Sheet JSON Node.js SDK to identify entity types."
+---
+
+`SheetJsonEntityType` is the canonical set of string values that can appear in the `@entity` field of any serialised Sheet JSON object. Every class in the SDK — `Workbook`, `Sheet`, `Table`, `List` — stores its type identity in `@entity`, and the `class-transformer` deserialisation layer uses these values as discriminators to pick the correct concrete class when hydrating nested objects from plain JSON. Importing this enum lets you compare entity types in a type-safe, refactor-friendly way rather than relying on raw string literals scattered through your code. The `ISSUE_*` variants are reserved for validation-error payloads: they mark special subtypes that carry diagnostic information about rows or entire blocks that failed validation rules.
+
+## Import
+
+```typescript
+import { SheetJsonEntityType } from '@org-quicko/sheet';
+```
+
+## Enum Definition
+
+```typescript
+enum SheetJsonEntityType {
+  WORKBOOK              = 'workbook',
+  SHEET                 = 'sheet',
+  LIST                  = 'list',
+  TABLE                 = 'table',
+  ISSUE_ROW             = 'table.issue_row',
+  ISSUE_TABLE           = 'table.issue_table',
+  ISSUE_ROW_FOR_LIST    = 'list.issue_row',
+  ISSUE_TABLE_FOR_LIST  = 'list.issue_table',
+}
+```
+
+## Members
+
+### `WORKBOOK`
+
+**Value:** `'workbook'`
+
+Identifies a `Workbook` object in serialised JSON. This is the value returned by `workbook.getEntity()` and the value placed in the `@entity` field of a workbook JSON document.
+
+---
+
+### `SHEET`
+
+**Value:** `'sheet'`
+
+Identifies a `Sheet` object. Appears as the `@entity` discriminator on each entry in the `sheets` array of a serialised `Workbook`.
+
+---
+
+### `TABLE`
+
+**Value:** `'table'`
+
+Identifies a `Table` block. Appears as the `@entity` discriminator on block entries inside a `Sheet`'s `blocks` array when the block is of type `Table`.
+
+---
+
+### `LIST`
+
+**Value:** `'list'`
+
+Identifies a `List` block. Appears as the `@entity` discriminator on block entries inside a `Sheet`'s `blocks` array when the block is of type `List`.
+
+---
+
+### `ISSUE_ROW`
+
+**Value:** `'table.issue_row'`
+
+A special subtype for a `Table` row that failed one or more validation rules. Used by validation pipelines to annotate individual erroneous rows within a table while keeping them structurally in place.
+
+---
+
+### `ISSUE_TABLE`
+
+**Value:** `'table.issue_table'`
+
+A special subtype for an entire `Table` block that contains validation errors. The presence of this entity type signals that the block-level validation produced issues.
+
+---
+
+### `ISSUE_ROW_FOR_LIST`
+
+**Value:** `'list.issue_row'`
+
+A special subtype for a `List` item (row) that failed validation. Mirrors `ISSUE_ROW` but scoped to `List` blocks.
+
+---
+
+### `ISSUE_TABLE_FOR_LIST`
+
+**Value:** `'list.issue_table'`
+
+A special subtype for an entire `List` block that contains validation errors. Mirrors `ISSUE_TABLE` but scoped to `List` blocks.
+
+---
+
+## JSON Representation
+
+When a `Workbook` is serialised to JSON the `@entity` field appears at every level of the hierarchy:
+
+```json
+{
+  "@entity": "workbook",
+  "name": "annual_report",
+  "sheets": [
+    {
+      "@entity": "sheet",
+      "name": "summary",
+      "blocks": [
+        {
+          "@entity": "table",
+          "name": "revenue",
+          "header": ["quarter", "amount"],
+          "rows": [["Q1", 50000], ["Q2", 62000]]
+        },
+        {
+          "@entity": "list",
+          "name": "metadata_list",
+          "items": [
+            { "currency": "USD" },
+            { "fiscal_year": 2024 }
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Usage Example
+
+```typescript
+import { SheetJsonEntityType, Workbook, Sheet, Table, List } from '@org-quicko/sheet';
+
+const workbook = new Workbook();
+const sheet = new Sheet();
+const table = new Table();
+const list = new List();
+
+sheet.addBlock(table);
+sheet.addBlock(list);
+workbook.addSheet(sheet);
+
+// Type-safe entity comparisons
+console.log(workbook.getEntity() === SheetJsonEntityType.WORKBOOK); // true
+console.log(sheet.getEntity()    === SheetJsonEntityType.SHEET);    // true
+console.log(table.getEntity()    === SheetJsonEntityType.TABLE);    // true
+console.log(list.getEntity()     === SheetJsonEntityType.LIST);     // true
+
+// Use in a switch to handle blocks polymorphically
+function describeBlock(block: { getEntity(): string }) {
+  switch (block.getEntity()) {
+    case SheetJsonEntityType.TABLE:
+      return 'This is a Table block';
+    case SheetJsonEntityType.LIST:
+      return 'This is a List block';
+    case SheetJsonEntityType.ISSUE_TABLE:
+    case SheetJsonEntityType.ISSUE_TABLE_FOR_LIST:
+      return 'This block has validation errors';
+    default:
+      return 'Unknown block type';
+  }
+}
+
+sheet.getBlocks().forEach((block) => {
+  console.log(describeBlock(block));
+});
+// This is a Table block
+// This is a List block
+```

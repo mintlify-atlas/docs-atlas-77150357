@@ -1,0 +1,54 @@
+---
+title: "Sheet JSON Code Generators Overview"
+sidebarTitle: "Overview"
+description: "Sheet JSON generators produce typed TypeScript or Java classes from a JSON Schema, so your application code accesses workbook data through a strong type system."
+---
+
+Sheet JSON generators read a JSON Schema that describes a workbook's sheets, tables, lists, and data types, then output language-specific typed classes for every entity in that schema. Instead of manually writing boilerplate bean or model classes — and keeping them in sync with the workbook structure — you define the structure once in a schema file and let the generator produce the code. When the workbook structure changes, update the schema and regenerate; the tool handles the rest.
+
+## What generators produce
+
+A JSON Schema captures the full shape of a workbook: which sheets it contains, what tables and lists live inside each sheet, the columns and their types, and any constraints on the data. From that single source of truth the generator creates typed classes for the workbook, each sheet, each table's rows, and each list. Application code can then import these classes and interact with workbook data through a strong type system rather than through untyped maps or raw JSON access.
+
+## Why use a generator
+
+Writing model classes by hand is repetitive and fragile. Adding a column or renaming a sheet means touching multiple files across the codebase. A generator eliminates that work: the schema is the authoritative description of the workbook's structure, and the generated classes are a reproducible artifact derived from it. This keeps the codebase consistent and makes structural changes low-risk — update the schema, run the generator, and the new classes are immediately available.
+
+## Available generators
+
+Two generators are available, one for each supported language:
+
+- **`@org-quicko/sheet-generator`** — a Node.js CLI that generates TypeScript classes from a JSON Schema. It ships three commands: `schema-to-objects` for class generation, `json-to-schema` to derive a schema from an existing Sheet JSON file, and `excel-to-schema` to derive a schema from an Excel workbook.
+- **`in.org.quicko.sheet:generator`** — a Maven plugin that generates Java POJOs and Jackson mixins from a JSON Schema. It provides the `generator:schema-to-pojo` and `generator:excel-to-json` goals, among others, and integrates with the standard Maven build lifecycle.
+
+## Typical workflow
+
+<Steps>
+  <Step title="Model your workbook structure">
+    Define the workbook's sheets, tables, lists, column names, and data types in a JSON Schema file. You can also bootstrap a schema from an existing Excel file or Sheet JSON document using `excel-to-schema` or `json-to-schema`.
+  </Step>
+  <Step title="Run the generator">
+    Execute the appropriate generator command or Maven goal, pointing it at your schema file and an output directory. The generator creates one typed class per workbook entity.
+  </Step>
+  <Step title="Import the generated classes">
+    Reference the generated classes from your application code. Because the classes are typed, your IDE can provide autocompletion and your compiler can catch structural mismatches at build time.
+  </Step>
+  <Step title="Regenerate when the structure changes">
+    Make any structural changes in the schema file, not in the generated code. Re-run the generator to produce updated classes that reflect the new structure, then recompile or run the TypeScript type-check.
+  </Step>
+</Steps>
+
+<Warning>
+  Do not hand-edit generated classes. They are overwritten in full on every generator run, so any manual changes will be lost the next time you regenerate.
+</Warning>
+
+## Choose a generator
+
+<CardGroup cols={2}>
+  <Card title="Node.js Generator" icon="node-js" href="/generators/nodejs-generator">
+    Install `@org-quicko/sheet-generator` from npm and use the `schema-to-objects`, `json-to-schema`, and `excel-to-schema` CLI commands to generate TypeScript classes from a JSON Schema.
+  </Card>
+  <Card title="Java Generator" icon="java" href="/generators/java-generator">
+    Add `in.org.quicko.sheet:generator` as a Maven plugin and use the `generator:schema-to-pojo` and `generator:excel-to-json` goals to generate Java POJOs that integrate with the Sheet JSON core library.
+  </Card>
+</CardGroup>

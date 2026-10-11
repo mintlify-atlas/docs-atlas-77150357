@@ -1,0 +1,62 @@
+---
+title: "Sheet Tools: Browser App for Schema Building and Data Viewing"
+sidebarTitle: "Overview"
+description: "Sheet Tools is a Next.js browser application for building Sheet JSON schemas visually and viewing or editing workbook data without writing code."
+---
+
+Sheet Tools is a browser application bundled with the Sheet JSON repository at `frontend/nextjs/org-quicko-sheet-tools`. It provides two interactive tools — the Schema Builder and the Sheet Visualiser — that let you design workbook structures and inspect workbook data without writing any code. All workbook and schema data is stored locally in your browser's IndexedDB database and never leaves your machine.
+
+## Tech stack
+
+Sheet Tools is built on the following technologies:
+
+| Technology | Role |
+|---|---|
+| [Next.js 15](https://nextjs.org/) | React framework and file-based routing |
+| [React 19](https://react.dev/) | Component model and state management |
+| [Tailwind CSS](https://tailwindcss.com/) | Utility-first styling |
+| [shadcn/ui](https://ui.shadcn.com/) (Radix UI) | Accessible UI component primitives |
+| [Zustand](https://zustand-demo.pmnd.rs/) | Schema builder state store |
+| [@tanstack/react-virtual](https://tanstack.com/virtual) | Virtualized table rendering in the visualiser |
+| [IndexedDB](https://developer.mozilla.org/en-US/docs/Web/API/IndexedDB_API) | Browser-local persistent storage |
+
+## Run Sheet Tools locally
+
+Sheet Tools is a standard Next.js application managed with `pnpm`. Run the following commands from the repository root to install dependencies and start the development server:
+
+```bash
+cd frontend/nextjs/org-quicko-sheet-tools
+pnpm install
+pnpm dev
+```
+
+Open the URL printed by the development server (typically `http://localhost:3000`) to access the Sheet Tools landing page.
+
+## Tools
+
+<CardGroup cols={2}>
+  <Card
+    title="Schema Builder"
+    icon="table"
+    href="/tools/schema-builder"
+  >
+    Define workbook sheets, tables, and lists visually. Configure column names and data types, then export a JSON Schema file for use with the Node.js or Java code generators.
+  </Card>
+  <Card
+    title="Sheet Visualiser"
+    icon="eye"
+    href="/tools/sheet-visualiser"
+  >
+    Load a Sheet JSON workbook file and browse its sheets and blocks as interactive grids. Validate data against a schema and add new rows or list items through a dialog.
+  </Card>
+</CardGroup>
+
+## Local storage model
+
+Every workbook and schema you create or import is stored in your browser's IndexedDB database under the `sheet-tools-db` database. Each workbook is stored as a separate record keyed by its name, so changes to one workbook can never overwrite data in another. The storage layer uses a minimal promise-based wrapper around the native IndexedDB API — no external persistence library is required.
+
+When the app initialises, it checks for data left by earlier versions of Sheet Tools that used `localStorage` and migrates it into IndexedDB automatically.
+
+<Note>
+  Sheet Tools is a local development aid. Workbooks and schemas are stored in browser IndexedDB only and are not synced to any server or shared across devices. If you clear your browser's site data, all locally saved workbooks will be removed. Export any schemas or workbooks you want to keep before clearing browser storage.
+</Note>

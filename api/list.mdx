@@ -1,0 +1,187 @@
+---
+title: "List Class — Node.js SDK Reference"
+sidebarTitle: "List"
+description: "The List class is a Block that holds an array of Item key-value pairs. In JSON, items serialize as single-property objects like {\"currency\": \"INR\"}."
+---
+
+`List` is one of the two concrete `Block` subtypes (the other being `Table`). Where a `Table` stores rows of uniform columns, a `List` stores an ordered sequence of named `Item` key-value pairs — think of it as a property sheet or a metadata section in a spreadsheet. In the serialised JSON representation each `Item` becomes a single-property object such as `{"currency": "INR"}` or `{"total": 1500}`. When an XLSX file is parsed, a block whose name ends with `"list"` is automatically deserialised as a `List`. `List` extends `Block`, which in turn extends `BaseObject`.
+
+## Import
+
+```typescript
+import { List } from '@org-quicko/sheet';
+```
+
+## Constructor
+
+### `new List()`
+
+Creates a new, empty `List` and initialises an empty `items` array.
+
+```typescript
+const list = new List();
+```
+
+## Instance Methods
+
+### `getItems()`
+
+Returns the full, ordered array of items. Initialises the array to an empty array if it is currently `null`.
+
+**Returns:** `Array<Item>`
+
+---
+
+### `getItem(key)`
+
+Retrieves the first `Item` whose key matches the given string using a case-insensitive comparison.
+
+<ParamField path="key" type="string" required>
+  The key to search for. Matching is case-insensitive.
+</ParamField>
+
+**Returns:** `Item | null` — the matching item, or `null` if none is found.
+
+---
+
+### `addItem(item)`
+
+Appends a single `Item` to the end of the items array.
+
+<ParamField path="item" type="Item" required>
+  The `Item` instance to add.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `addItems(items)`
+
+Appends multiple `Item` objects in a single call.
+
+<ParamField path="items" type="Item[]" required>
+  An array of `Item` instances to append.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `replaceItem(item)`
+
+Finds the existing item whose key matches `item.getKey()` (exact, case-sensitive comparison in the current implementation) and swaps it with the provided instance. If no matching item is found, no change is made.
+
+<ParamField path="item" type="Item" required>
+  The replacement `Item`. Its `key` is used to locate the item to replace.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `removeItem(index)` <small>(overload 1)</small>
+
+Removes the item at the given zero-based index.
+
+<ParamField path="index" type="number" required>
+  Zero-based index of the item to remove.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `removeItem(key)` <small>(overload 2)</small>
+
+Removes all items whose key matches the given string (case-insensitive).
+
+<ParamField path="key" type="string" required>
+  The key of the item(s) to remove. Matching is case-insensitive.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `length()`
+
+Returns the number of items in the list.
+
+**Returns:** `number`
+
+---
+
+## Inherited from `Block` / `BaseObject`
+
+### `getName()`
+
+Returns the entity name string registered on the class (e.g. `"list"`).
+
+**Returns:** `string`
+
+---
+
+### `getEntity()`
+
+Returns the `@entity` discriminator string (`"list"`).
+
+**Returns:** `string`
+
+---
+
+### `getMetadata()`
+
+Returns the freeform metadata map attached to this list.
+
+**Returns:** `JSONObject`
+
+---
+
+### `setMetadata(value)`
+
+Replaces the metadata map on this list.
+
+<ParamField path="value" type="JSONObject" required>
+  The new metadata object.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+## Usage Example
+
+```typescript
+import { List, Item } from '@org-quicko/sheet';
+
+const list = new List();
+
+// Add individual items
+list.addItem(new Item('currency', 'INR'));
+list.addItem(new Item('fiscal_year', 2024));
+list.addItem(new Item('verified', true));
+
+// Bulk add
+list.addItems([
+  new Item('region', 'south'),
+  new Item('language', 'en'),
+]);
+
+console.log(list.length()); // 5
+
+// Retrieve by key (case-insensitive)
+const currency = list.getItem('Currency');
+console.log(currency?.getStringValue()); // 'INR'
+
+// Replace an item
+list.replaceItem(new Item('currency', 'USD'));
+
+// Remove by key
+list.removeItem('language');
+
+// Remove by index
+list.removeItem(0);
+
+console.log(list.length()); // 3
+```

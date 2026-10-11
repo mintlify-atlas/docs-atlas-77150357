@@ -1,0 +1,312 @@
+---
+title: "Sheet JSON Wire Format and JSON Structure"
+sidebarTitle: "JSON Structure"
+description: "Learn the exact JSON shape of a Sheet JSON workbook — required fields, discriminator values, table row alignment, list item format, and metadata conventions."
+---
+
+Sheet JSON follows a precise wire format. Every entity has required fields, and the exact spelling and casing of those fields is what the SDK's serializer and deserializer rely on. This page describes each required and optional field, shows how tables and lists encode their data, and explains two important conventions — the epoch timestamp format and the `metadata` extension point.
+
+<Warning>
+If you rename an entity (changing its `name` value in the schema) after generating language-specific classes, you must regenerate those classes and update any code that references the old name. Generated classes derive their name constants from the schema, so manual changes are overwritten on the next generator run.
+</Warning>
+
+---
+
+## Overall Shape
+
+A Sheet JSON document is always a single JSON object rooted at a `Workbook`. There is no envelope, no version field, and no additional wrapper — the workbook object is the top-level value.
+
+```json
+{
+  "@entity": "workbook",
+  "name":    "<workbook-name>",
+  "sheets":  [ /* Sheet objects */ ],
+  "metadata": { /* optional */ }
+}
+```
+
+---
+
+## The `@entity` Discriminator
+
+Every entity in a Sheet JSON document carries an `@entity` field. The deserializer reads this field first to determine which class to instantiate. The field is always a lowercase string.
+
+| Entity | `@entity` value |
+|---|---|
+| Workbook | `"workbook"` |
+| Sheet | `"sheet"` |
+| Table | `"table"` |
+| List | `"list"` |
+
+`@entity` is **always required**. Omitting it causes deserialization to fail or fall back to a generic base type.
+
+```json
+{ "@entity": "table", "name": "payment_table", ... }
+```
+
+<Note>
+The at-sign prefix (`@entity`) is intentional. It distinguishes the discriminator from regular data fields and prevents accidental collision with a column header or list key named `entity`.
+</Note>
+
+---
+
+## The `name` Field
+
+Every entity — workbook, sheet, table, and list — requires a `name` field. The name is used for lookup by the SDK (`getSheet("summary_sheet")`, `getBlock("payment_table")`), and name comparisons are **case-insensitive** at runtime.
+
+```json
+{
+  "@entity": "sheet",
+  "name": "summary_sheet",
+  "blocks": []
+}
+```
+
+Names do not need to be globally unique, but they must be unique within their parent container (e.g., sheet names must be unique within a workbook; block names must be unique within a sheet) to make lookups deterministic.
+
+---
+
+## Workbook JSON
+
+A workbook object contains an array of sheet objects under the `sheets` key.
+
+```json
+{
+  "@entity": "workbook",
+  "name": "report_workbook",
+  "sheets": [
+    // one or more Sheet objects
+  ]
+}
+```
+
+| Field | Type | Required |
+|---|---|---|
+| `@entity` | `"workbook"` | ✅ |
+| `name` | string | ✅ |
+| `sheets` | array of Sheet | ✅ |
+| `metadata` | object | ❌ |
+
+---
+
+## Sheet JSON
+
+A sheet contains an array of block objects under the `blocks` key. Blocks are ordered — their position in the array reflects their visual order in the spreadsheet (top to bottom).
+
+```json
+{
+  "@entity": "sheet",
+  "name": "summary_sheet",
+  "blocks": [
+    // Table and/or List objects, in order
+  ]
+}
+```
+
+| Field | Type | Required |
+|---|---|---|
+| `@entity` | `"sheet"` | ✅ |
+| `name` | string | ✅ |
+| `blocks` | array of Block | ✅ |
+| `metadata` | object | ❌ |
+
+### Multiple Blocks Per Sheet
+
+A single sheet may contain any number of blocks in any order. Tables and Lists may be freely interleaved.
+
+```json
+{
+  "@entity": "sheet",
+  "name": "summary_sheet",
+  "blocks": [
+    { "@entity": "table", "name": "payment_table", ... },
+    { "@entity": "list",  "name": "settings_list", ... },
+    { "@entity": "table", "name": "audit_log",     ... }
+  ]
+}
+```
+
+---
+
+## Table JSON
+
+A table's `header` is a flat array of column name strings. Its `rows` is an array of arrays, where each inner array contains the values for one row.
+
+```json
+{
+  "@entity": "table",
+  "name": "payment_table",
+  "header": ["reference", "amount", "status", "created_epoch"],
+  "rows": [
+    ["PAY-001", 1500,  "settled",  1706745600000],
+    ["PAY-002", 750,   "pending",  1706832000000],
+    ["PAY-003", null,  "cancelled", null]
+  ]
+}
+```
+
+| Field | Type | Required |
+|---|---|---|
+| `@entity` | `"table"` | ✅ |
+| `name` | string | ✅ |
+| `header` | string[] | ✅ |
+| `rows` | JSONValue[][] | ✅ |
+| `metadata` | object | ❌ |
+
+### Row-to-Column Alignment
+
+Values inside each row align with the `header` array strictly by index.
+
+```
+header:  ["reference",  "amount",  "status"]
+          index 0        index 1    index 2
+
+rows[0]: ["PAY-001",    1500,      "settled"]
+          index 0        index 1    index 2
+```
+
+Every row must contain the same number of elements as `header`. Use `null` for any cell that has no value — do not shorten the row or skip the index.
+
+```json
+// ✅ correct — null placeholder keeps alignment intact
+["PAY-003", null, "cancelled"]
+
+// ❌ incorrect — missing element breaks column alignment for "status"
+["PAY-003", null]
+```
+
+---
+
+## List JSON
+
+A list encodes key-value pairs under an `items` array. Each element of `items` is a **single-property object** — one key, one value.
+
+```json
+{
+  "@entity": "list",
+  "name": "settings_list",
+  "items": [
+    {"currency": "INR"},
+    {"timezone": "Asia/Kolkata"},
+    {"decimal_places": 2},
+    {"active": true}
+  ]
+}
+```
+
+| Field | Type | Required |
+|---|---|---|
+| `@entity` | `"list"` | ✅ |
+| `name` | string | ✅ |
+| `items` | single-key object[] | ✅ |
+| `metadata` | object | ❌ |
+
+Each item object has exactly one key-value pair. The key is a string; the value may be any JSON-compatible type (`string`, `number`, `boolean`, `null`, object, or array).
+
+<Note>
+In memory (TypeScript/Java), each item is an `Item` class instance with `getKey()` and `getValue()` methods. The single-property object format is only the **wire representation** — the SDK's custom transformer converts between the two automatically during serialization and deserialization.
+</Note>
+
+---
+
+## Epoch Timestamp Convention
+
+If a table column header or a list item key contains the word `epoch` (case-insensitive), the SDK treats the corresponding value as an **epoch timestamp in milliseconds** (a plain JSON number).
+
+```json
+{
+  "@entity": "table",
+  "name": "payment_table",
+  "header": ["reference", "created_epoch", "updated_epoch"],
+  "rows": [
+    ["PAY-001", 1706745600000, 1706832000000]
+  ]
+}
+```
+
+```json
+{
+  "@entity": "list",
+  "name": "audit_list",
+  "items": [
+    {"last_login_epoch": 1706745600000}
+  ]
+}
+```
+
+**XLSX import behavior:** When the `WorkbookConverter` reads an XLSX file, it checks each column header and list key for the word `epoch`. If an ISO 8601 date string (e.g. `"2024-02-01T00:00:00Z"`) is found in that column, the converter automatically converts it to epoch milliseconds before producing the JSON. Non-ISO strings in an epoch column are passed through unchanged.
+
+**XLSX export behavior:** When writing to XLSX, epoch-keyed columns and list items are converted back from milliseconds to ISO 8601 strings for human readability.
+
+<Tip>
+Use the `epoch` naming convention whenever you store dates or timestamps. It lets the SDK handle the ISO ↔ milliseconds conversion automatically across both XLSX import and export.
+</Tip>
+
+---
+
+## The `metadata` Field
+
+All four entity types support an optional `metadata` field. Its value is a plain JSON object with string keys and any JSON-compatible values.
+
+```json
+{
+  "@entity": "workbook",
+  "name": "report_workbook",
+  "metadata": {
+    "generated_by": "billing-service",
+    "version": "2.1.0",
+    "tenant_id": "org_abc123"
+  },
+  "sheets": []
+}
+```
+
+`metadata` is transparent to the SDK — it is preserved during round-trips but never interpreted by the core library. Use it to attach provenance information, schema versions, processing flags, or any application-specific context to any entity.
+
+---
+
+## Annotated Full Example
+
+The following document illustrates every structural rule described on this page.
+
+```json
+{
+  "@entity": "workbook",          // required discriminator
+  "name": "report_workbook",      // required workbook name
+  "metadata": {                   // optional workbook-level metadata
+    "generated_by": "billing-service"
+  },
+  "sheets": [
+    {
+      "@entity": "sheet",         // required discriminator
+      "name": "summary_sheet",    // required sheet name
+      "blocks": [
+        {
+          "@entity": "table",     // discriminator → Table subtype
+          "name": "payment_table",
+          "header": [             // flat array of column names
+            "reference",
+            "amount",
+            "status",
+            "created_epoch"       // "epoch" keyword → epoch ms values
+          ],
+          "rows": [
+            ["PAY-001", 1500,  "settled",  1706745600000],
+            ["PAY-002", 750,   "pending",  1706832000000],
+            ["PAY-003", null,  "cancelled", null]   // null = empty cell
+          ]
+        },
+        {
+          "@entity": "list",      // discriminator → List subtype
+          "name": "settings_list",
+          "items": [              // array of single-key objects
+            {"currency": "INR"},
+            {"decimal_places": 2},
+            {"last_run_epoch": 1706745600000}  // epoch ms in a list
+          ]
+        }
+      ]
+    }
+  ]
+}
+```

@@ -1,0 +1,254 @@
+---
+title: "Java Sheet Generator: Maven Plugin for POJO Generation"
+sidebarTitle: "Java Generator"
+description: "in.org.quicko.sheet:generator is a Maven plugin that generates Java POJOs and Jackson mixins from a JSON Schema. Configure it with the schema-to-pojo and excel-to-json goals."
+---
+
+`in.org.quicko.sheet:generator` is a Maven plugin that integrates with the standard Maven build lifecycle to generate Java POJOs and Jackson mixins from a JSON Schema. By binding generation to the `generate-sources` phase, the plugin ensures that typed Java classes for your workbook's sheets, tables, rows, and lists are always produced before compilation — no manual step required. It depends on `in.org.quicko.sheet:core`, which must be installed locally before the generator itself.
+
+## Maven coordinates
+
+```xml
+<groupId>in.org.quicko.sheet</groupId>
+<artifactId>generator</artifactId>
+<version>2.0.0</version>
+<packaging>maven-plugin</packaging>
+```
+
+<Note>
+  The generator is compiled with `<release>25</release>` in the Maven Compiler Plugin configuration, which means **JDK 25 is required** to build the plugin from source. Ensure your `JAVA_HOME` points to a JDK 25 installation before running any Maven commands against this plugin.
+</Note>
+
+---
+
+## Setup
+
+<Steps>
+  <Step title="Install the core library">
+    The generator depends on `in.org.quicko.sheet:core`. Install it to your local Maven repository before building the generator:
+
+    ```bash
+    mvn -f lib/java/org-quicko-sheet-core/pom.xml install -Dgpg.skip=true
+    ```
+
+    `-Dgpg.skip=true` skips GPG signing, which is only needed for release publishing and not for local builds.
+  </Step>
+  <Step title="Install the generator plugin">
+    With the core library available locally, install the generator plugin:
+
+    ```bash
+    mvn -f lib/java/org-quicko-sheet-generator/pom.xml install -Dgpg.skip=true
+    ```
+
+    After this step, the plugin is available in your local Maven repository and can be referenced from any project on the same machine.
+  </Step>
+  <Step title="Add the plugin to your project's pom.xml">
+    Declare the plugin in the `<build><plugins>` section of your project's `pom.xml`. Configure the goal you need — see the goal reference below for complete examples.
+  </Step>
+  <Step title="Run the Maven build">
+    Execute a standard Maven build. The plugin goals are bound to the `generate-sources` phase, so they run automatically before `compile`:
+
+    ```bash
+    mvn generate-sources
+    ```
+
+    Or run a full build:
+
+    ```bash
+    mvn package
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Goals
+
+### `generator:schema-to-pojo`
+
+The `schema-to-pojo` goal reads a JSON Schema file and generates Java POJOs into the configured output directory. It is bound to the `generate-sources` phase by default. After generation, it automatically registers the output directory as a compile source root so that `javac` picks up the generated classes without any extra configuration.
+
+**Parameters**
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `sourcePath` | Yes | — | Path to the JSON Schema file |
+| `targetPackage` | Yes | — | Java package name for the generated classes (e.g. `com.example.workbook`) |
+| `outputDirectory` | No | `${project.build.directory}/generated-sources/main/java` | Directory where generated Java source files are written |
+
+The plugin resolves the package directory structure automatically: if `targetPackage` is `com.example.workbook`, the classes are written to `<outputDirectory>/com/example/workbook/`.
+
+**`pom.xml` configuration**
+
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <groupId>in.org.quicko.sheet</groupId>
+      <artifactId>generator</artifactId>
+      <version>2.0.0</version>
+      <executions>
+        <execution>
+          <id>generate-sheet-pojos</id>
+          <goals>
+            <goal>schema-to-pojo</goal>
+          </goals>
+          <configuration>
+            <sourcePath>${project.basedir}/src/main/resources/schema/workbook.schema.json</sourcePath>
+            <targetPackage>com.example.workbook</targetPackage>
+            <outputDirectory>${project.build.directory}/generated-sources/main/java</outputDirectory>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+  </plugins>
+</build>
+```
+
+---
+
+### `generator:excel-to-json`
+
+The `excel-to-json` goal reads an Excel file (`.xlsx` or `.xls`) and writes a Sheet JSON document to the output directory. This is useful for generating a sample workbook JSON from an existing spreadsheet, which can then serve as test data or as the input for `generator:json-to-schema`.
+
+**Parameters**
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `sourcePath` | Yes | — | Path to the Excel file (`.xlsx` or `.xls`) |
+| `outputDirectory` | No | `${project.build.directory}/generated-sources/main/resources/sample` | Directory where the generated Sheet JSON file is written |
+
+The output file is named after the input file with its extension replaced by `.json` (e.g. `report.xlsx` → `report.json`).
+
+**`pom.xml` configuration**
+
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <groupId>in.org.quicko.sheet</groupId>
+      <artifactId>generator</artifactId>
+      <version>2.0.0</version>
+      <executions>
+        <execution>
+          <id>excel-to-json</id>
+          <goals>
+            <goal>excel-to-json</goal>
+          </goals>
+          <configuration>
+            <sourcePath>${project.basedir}/src/main/resources/data/report.xlsx</sourcePath>
+            <outputDirectory>${project.build.directory}/generated-sources/main/resources/sample</outputDirectory>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+  </plugins>
+</build>
+```
+
+---
+
+### `generator:json-to-schema`
+
+The `json-to-schema` goal reads a Sheet JSON document and derives a JSON Schema that describes its structure. Use it to bootstrap a schema from a workbook you already have in JSON form. The output file is named `<basename>.schema.json`.
+
+**Parameters**
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `sourcePath` | Yes | — | Path to the Sheet JSON file |
+| `outputDirectory` | No | `${project.build.directory}/generated-sources/main/resources/schema` | Directory where the generated schema file is written |
+
+**`pom.xml` configuration**
+
+```xml
+<execution>
+  <id>json-to-schema</id>
+  <goals>
+    <goal>json-to-schema</goal>
+  </goals>
+  <configuration>
+    <sourcePath>${project.basedir}/src/main/resources/data/workbook.json</sourcePath>
+    <outputDirectory>${project.build.directory}/generated-sources/main/resources/schema</outputDirectory>
+  </configuration>
+</execution>
+```
+
+---
+
+### `generator:excel-to-schema`
+
+The `excel-to-schema` goal reads an Excel file (`.xlsx` or `.xls`) and generates a JSON Schema that captures the workbook's sheet structure. The output file is named `<basename>.schema.json`. An optional `workbookName` parameter lets you specify the workbook name recorded in the schema.
+
+**Parameters**
+
+| Parameter | Required | Default | Description |
+|---|---|---|---|
+| `sourcePath` | Yes | — | Path to the Excel file (`.xlsx` or `.xls`) |
+| `outputDirectory` | No | `${project.build.directory}/generated-sources/main/resources/schema` | Directory where the generated schema file is written |
+| `workbookName` | No | — | Optional workbook name to embed in the generated schema |
+
+**`pom.xml` configuration**
+
+```xml
+<execution>
+  <id>excel-to-schema</id>
+  <goals>
+    <goal>excel-to-schema</goal>
+  </goals>
+  <configuration>
+    <sourcePath>${project.basedir}/src/main/resources/data/report.xlsx</sourcePath>
+    <outputDirectory>${project.build.directory}/generated-sources/main/resources/schema</outputDirectory>
+    <workbookName>report_workbook</workbookName>
+  </configuration>
+</execution>
+```
+
+---
+
+## Complete multi-goal configuration example
+
+The following `pom.xml` snippet chains all four goals in a single plugin declaration — first converting an Excel file to a Sheet JSON document, then deriving a schema from that JSON, and finally generating Java POJOs from the schema:
+
+```xml
+<build>
+  <plugins>
+    <plugin>
+      <groupId>in.org.quicko.sheet</groupId>
+      <artifactId>generator</artifactId>
+      <version>2.0.0</version>
+      <executions>
+
+        <!-- Step 1: Convert Excel workbook to Sheet JSON -->
+        <execution>
+          <id>excel-to-json</id>
+          <goals>
+            <goal>excel-to-json</goal>
+          </goals>
+          <configuration>
+            <sourcePath>${project.basedir}/src/main/resources/data/report.xlsx</sourcePath>
+            <outputDirectory>${project.build.directory}/generated-sources/main/resources/sample</outputDirectory>
+          </configuration>
+        </execution>
+
+        <!-- Step 2: Generate Java POJOs from the JSON Schema -->
+        <execution>
+          <id>generate-pojos</id>
+          <goals>
+            <goal>schema-to-pojo</goal>
+          </goals>
+          <configuration>
+            <sourcePath>${project.basedir}/src/main/resources/schema/workbook.schema.json</sourcePath>
+            <targetPackage>com.example.workbook</targetPackage>
+          </configuration>
+        </execution>
+
+      </executions>
+    </plugin>
+  </plugins>
+</build>
+```
+
+<Warning>
+  Do not edit the Java POJOs that the generator writes to the output directory. These files are fully regenerated on every Maven build that includes the `generate-sources` phase. Any manual changes will be silently overwritten the next time you run `mvn generate-sources` or `mvn package`.
+</Warning>

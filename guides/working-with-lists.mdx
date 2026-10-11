@@ -1,0 +1,326 @@
+---
+title: "Working with Lists in Sheet JSON"
+sidebarTitle: "Lists"
+description: "Create and manage List blocks containing key-value Item pairs using the Sheet JSON TypeScript and Java SDKs. Covers item CRUD and serialization behavior."
+---
+
+A `List` is a Sheet JSON block that stores an ordered collection of key-value `Item` pairs. Where a `Table` is ideal for rows of homogeneous records, a `List` is the right choice for heterogeneous settings-style data — things like configuration values, report parameters, or document metadata that belong in the same logical group but don't share a fixed schema. This guide covers every method available on the `List` class in TypeScript and Java.
+
+## Creating a List
+
+<Tabs>
+  <Tab title="TypeScript">
+    Instantiate a `List` and attach it to a `Sheet` using `addBlock`:
+
+    ```typescript
+    import { Workbook, Sheet, List, Item } from "@org-quicko/sheet-core";
+
+    const settings = new List();
+
+    const sheet = new Sheet();
+    sheet.addBlock(settings);
+
+    const workbook = new Workbook();
+    workbook.addSheet(sheet);
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    import in.org.quicko.sheet.beans.Workbook;
+    import in.org.quicko.sheet.beans.Sheet;
+    import in.org.quicko.sheet.beans.List;
+    import in.org.quicko.sheet.beans.Item;
+
+    List settings = new List();
+
+    Sheet sheet = new Sheet();
+    sheet.addBlock(settings);
+
+    Workbook workbook = new Workbook();
+    workbook.addSheet(sheet);
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Adding Items
+
+Every entry in a `List` is an `Item` — a lightweight key-value pair. The key is always a `string`; the value can be any JSON-compatible type.
+
+### Add a single item
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    import { Item } from "@org-quicko/sheet-core";
+
+    settings.addItem(new Item("currency", "USD"));
+    settings.addItem(new Item("decimal_places", 2));
+    settings.addItem(new Item("active", true));
+    ```
+  </Tab>
+  <Tab title="Java">
+    Java's `List` exposes typed convenience overloads so you don't need to box values manually:
+
+    ```java
+    settings.addItem(new Item("currency", "USD"));
+    settings.addItem("decimal_places", 2);   // Integer overload
+    settings.addItem("active", Boolean.TRUE); // Boolean overload
+    ```
+  </Tab>
+</Tabs>
+
+### Add multiple items at once
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    settings.addItems([
+      new Item("currency",     "USD"),
+      new Item("fiscal_year",  2024),
+      new Item("created_epoch", 1718000000000),
+    ]);
+
+    console.log(settings.length()); // 3
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    settings.addItem(new Item("currency",      "USD"));
+    settings.addItem(new Item("fiscal_year",   2024));
+    settings.addItem(new Item("created_epoch", 1718000000000L));
+
+    System.out.println(settings.size()); // 3
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Reading Items
+
+### Retrieve all items
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    const items = settings.getItems(); // Array<Item>
+
+    for (const item of items) {
+      console.log(item.getKey(), "->", item.getValue());
+    }
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    java.util.List<Item> items = settings.getItems();
+
+    for (Item item : items) {
+      System.out.println(item.getKey() + " -> " + item.getValue());
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Retrieve a single item by key
+
+`getItem(key)` searches the list for an item whose key matches — ignoring case — and returns the `Item` instance, or `null` if no match is found.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    const currencyItem = settings.getItem("currency");
+
+    if (currencyItem !== null) {
+      console.log(currencyItem.getStringValue()); // "USD"
+    }
+
+    // Case-insensitive: "Currency", "CURRENCY", and "currency" all resolve to the same item
+    const same = settings.getItem("CURRENCY");
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    Item currencyItem = settings.getItem("currency");
+
+    if (currencyItem != null) {
+      System.out.println(currencyItem.getStringValue()); // "USD"
+    }
+
+    // Case-insensitive lookup
+    Item same = settings.getItem("CURRENCY");
+    ```
+  </Tab>
+</Tabs>
+
+<Note>
+  `getItem(key)` performs a **case-insensitive** comparison using `toLowerCase()` on both the stored key and the lookup argument. This means `getItem("Currency")`, `getItem("CURRENCY")`, and `getItem("currency")` all return the same item. Key uniqueness in a list is therefore effectively case-insensitive.
+</Note>
+
+---
+
+## Replacing an Item
+
+`replaceItem(item)` finds the existing item with the same key and swaps it for the new `Item`. If no item with that key exists, the behaviour differs slightly between languages — in TypeScript the list is unchanged (the item is not added); use `addItem` first if the key might not exist yet.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    // Update the fiscal_year value
+    settings.replaceItem(new Item("fiscal_year", 2025));
+
+    console.log(settings.getItem("fiscal_year")?.getValue()); // 2025
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    settings.replaceItem(new Item("fiscal_year", 2025));
+
+    System.out.println(settings.getItem("fiscal_year").getValue()); // 2025
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Removing Items
+
+Both SDKs support two removal overloads: by numeric index and by string key.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    // Remove by zero-based index
+    settings.removeItem(0);
+
+    // Remove by key (case-insensitive)
+    settings.removeItem("active");
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    // Remove by zero-based index
+    settings.removeItem(0);
+
+    // Remove by key (case-insensitive)
+    settings.removeItem("active");
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Item Count
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    console.log(settings.length()); // number of items in the list
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    System.out.println(settings.size());
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Complete Example — Application Settings List
+
+The following end-to-end example builds a settings list that captures currency, a fiscal year, and a creation timestamp, then reads back specific values.
+
+<Tabs>
+  <Tab title="TypeScript">
+    ```typescript
+    import { Workbook, Sheet, List, Item } from "@org-quicko/sheet-core";
+
+    // Build list
+    const settings = new List();
+    settings.addItems([
+      new Item("currency",      "USD"),
+      new Item("fiscal_year",   2024),
+      new Item("created_epoch", 1718000000000), // epoch ms — see Tip below
+    ]);
+
+    // Attach to workbook
+    const sheet = new Sheet();
+    sheet.addBlock(settings);
+    const workbook = new Workbook();
+    workbook.addSheet(sheet);
+
+    // Read values back
+    const currency = settings.getItem("currency");
+    console.log(currency?.getStringValue());   // "USD"
+
+    const year = settings.getItem("fiscal_year");
+    console.log(year?.getNumberValue());        // 2024
+
+    const ts = settings.getItem("created_epoch");
+    console.log(ts?.getNumberValue());          // 1718000000000
+
+    // Update a value
+    settings.replaceItem(new Item("fiscal_year", 2025));
+
+    // Remove an item
+    settings.removeItem("active");
+    ```
+  </Tab>
+  <Tab title="Java">
+    ```java
+    import in.org.quicko.sheet.beans.*;
+
+    // Build list
+    List settings = new List();
+    settings.addItem("currency",      "USD");
+    settings.addItem("fiscal_year",   2024);
+    settings.addItem("created_epoch", 1718000000000L);
+
+    // Attach to workbook
+    Sheet sheet = new Sheet();
+    sheet.addBlock(settings);
+    Workbook workbook = new Workbook();
+    workbook.addSheet(sheet);
+
+    // Read values back
+    Item currency = settings.getItem("currency");
+    System.out.println(currency.getStringValue());  // "USD"
+
+    Item year = settings.getItem("fiscal_year");
+    System.out.println(year.getIntegerValue());      // 2024
+
+    Item ts = settings.getItem("created_epoch");
+    System.out.println(ts.getLongValue());           // 1718000000000
+
+    // Update a value
+    settings.replaceItem(new Item("fiscal_year", 2025));
+
+    // Remove by key
+    settings.removeItem("active");
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Serialized JSON Shape
+
+Each `Item` serialises as a **single-property object** `{"key": value}` inside the `items` array on the list block. This compact format makes the list easy to diff and parse without a schema.
+
+```json
+{
+  "@entity": "list",
+  "name": "list",
+  "items": [
+    { "currency": "USD" },
+    { "fiscal_year": 2024 },
+    { "created_epoch": 1718000000000 }
+  ]
+}
+```
+
+<Tip>
+  Use the `epoch` convention in a list key name (e.g. `created_epoch`, `epoch_updated`) whenever the value holds a Unix timestamp in milliseconds. The XLSX converter detects this suffix and automatically converts ISO date strings from the spreadsheet into epoch numbers on import, and converts them back to ISO strings on export.
+</Tip>

@@ -1,0 +1,151 @@
+---
+title: "WorkbookConverter Class — Node.js SDK Reference"
+sidebarTitle: "WorkbookConverter"
+description: "WorkbookConverter converts between XLSX buffers and Workbook instances. It handles sheet parsing, block detection, epoch date conversion, and XLSX layout conventions."
+---
+
+`WorkbookConverter` is the bridge between the Sheet JSON object model and XLSX files. It uses [SheetJS](https://sheetjs.com/) (`xlsx`) under the hood to read raw spreadsheet bytes or to write SheetJS workbook objects, and it applies a set of layout conventions to map XLSX rows and columns back to `Table` and `List` blocks — and vice versa. In most cases you will not use `WorkbookConverter` directly: the static helpers `Workbook.fromXlsx()` and `Workbook.toXlsx()` are thin wrappers around this class and are the recommended entry points. Use `WorkbookConverter` directly when you need to deserialise into a custom `Workbook` subclass.
+
+## Import
+
+```typescript
+import { WorkbookConverter } from '@org-quicko/sheet';
+```
+
+## Constructor
+
+`WorkbookConverter` has no constructor parameters — simply instantiate it with `new WorkbookConverter()`.
+
+```typescript
+const converter = new WorkbookConverter();
+```
+
+## Instance Methods
+
+### `toWorkbook<T extends Workbook>(fileBuffer, Class)`
+
+Reads an XLSX buffer and returns a fully hydrated instance of the provided `Workbook` subclass (or `Workbook` itself). The method uses SheetJS to parse the raw bytes, walks each sheet to detect blocks, and constructs a JSON representation that is then deserialised via `class-transformer`'s `plainToInstance`.
+
+<ParamField path="fileBuffer" type="Buffer" required>
+  A Node.js `Buffer` containing the raw bytes of an `.xlsx` file.
+</ParamField>
+
+<ParamField path="Class" type="new () => T" required>
+  The constructor of the target class. Must extend `Workbook`. Pass `Workbook` for the base type or your own subclass for a typed result.
+</ParamField>
+
+**Returns:** `T` — an instance of the class passed as `Class`, fully populated from the XLSX data.
+
+**Throws:** `ConverterException` if the buffer is not a valid XLSX file, or if any sheet or block fails to parse.
+
+---
+
+### `toXlsx(workbook)`
+
+Converts a `Workbook` instance into a SheetJS `XLSX.WorkBook` object. Each `Sheet` becomes an XLSX sheet tab, each `Table` block is written starting with the block name row followed by the header row and then data rows, and each `List` block is written as two-column key/value rows preceded by the block name.
+
+<ParamField path="workbook" type="Workbook" required>
+  The `Workbook` instance to convert.
+</ParamField>
+
+**Returns:** `XLSX.WorkBook` — a SheetJS workbook object that can be written to disk with `XLSX.writeFile()` or streamed with `XLSX.write()`.
+
+---
+
+## XLSX Layout Conventions
+
+`WorkbookConverter` interprets and produces XLSX files according to a strict layout.
+
+### Block Detection
+
+When reading, the converter scans each sheet row by row and identifies **contiguous non-empty row ranges** as blocks. A row is considered empty if all its cells are `null`. A new block begins when the previous row was empty (or when the first non-empty row is reached) and ends when the next empty row is encountered.
+
+**Block type detection:** the first row of a block range contains the block name. If that name ends with the suffix `"list"` (case-insensitive), the block is parsed as a `List`; otherwise it is parsed as a `Table`.
+
+### Table Layout
+
+| XLSX Row | Content |
+|----------|---------|
+| Row 0    | Block name (e.g. `"transactions"`) |
+| Row 1    | Column headers |
+| Row 2+   | Data rows |
+
+### List Layout
+
+| XLSX Row | Content |
+|----------|---------|
+| Row 0    | Block name (must end with `"list"`) |
+| Row 1+   | Key/value pairs — column A = key, column B = value |
+
+### Epoch Date Handling
+
+Columns or item keys whose name contains the substring `"epoch"` receive special date conversion:
+
+- **Reading (XLSX → Workbook):** If a cell value is an ISO 8601 timestamp string (e.g. `"2024-01-15T10:30:00Z"`), it is converted to a Unix epoch millisecond integer. Otherwise the value is stored as-is.
+- **Writing (Workbook → XLSX):** If a cell's value is a `number` and its column header contains `"epoch"`, the integer is formatted as an ISO 8601 string before being written to the cell.
+
+### Date String Handling
+
+For non-epoch columns, cell values that match the `MM/dd/yyyy` date format are automatically converted to their Unix epoch millisecond representation when reading from XLSX.
+
+### Sheet Name Truncation
+
+XLSX limits sheet tab names to 31 characters. When writing, the converter takes the last 31 characters of the sheet's `name` (using the last dot-separated segment if the name contains dots).
+
+---
+
+## Relationship to `Workbook` Static Helpers
+
+The static convenience methods on `Workbook` delegate directly to `WorkbookConverter`:
+
+```typescript
+// Workbook.fromXlsx(buffer) is equivalent to:
+const converter = new WorkbookConverter();
+converter.toWorkbook(buffer, Workbook);
+
+// Workbook.toXlsx(workbook) is equivalent to:
+const converter = new WorkbookConverter();
+converter.toXlsx(workbook);
+```
+
+---
+
+## Usage Example
+
+```typescript
+import { WorkbookConverter, Workbook, Sheet, Table, List, Item } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+import * as XLSX from 'xlsx';
+import * as fs from 'fs';
+
+// --- Reading from XLSX ---
+const buffer = fs.readFileSync('report.xlsx');
+const converter = new WorkbookConverter();
+
+// Deserialise into the base Workbook class
+const workbook = converter.toWorkbook(buffer, Workbook);
+console.log(workbook.getSheets().length);
+
+// Deserialise into a custom subclass
+class MyWorkbook extends Workbook {}
+const typed = converter.toWorkbook(buffer, MyWorkbook);
+console.log(typed instanceof MyWorkbook); // true
+
+// --- Writing to XLSX ---
+const wb = new Workbook();
+const sheet = new Sheet();
+
+const table = new Table();
+table.setHeader(new JSONArray(['item', 'amount']));
+table.addRow(new JSONArray(['Invoice 001', 5000]));
+sheet.addBlock(table);
+
+const metaList = new List();
+metaList.addItem(new Item('currency', 'USD'));
+sheet.addBlock(metaList);
+
+wb.addSheet(sheet);
+
+const xlsxWorkbook = converter.toXlsx(wb);
+XLSX.writeFile(xlsxWorkbook, 'output.xlsx');
+```

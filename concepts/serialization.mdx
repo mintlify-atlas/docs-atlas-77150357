@@ -1,0 +1,346 @@
+---
+title: "Serialization and Deserialization in Sheet JSON"
+sidebarTitle: "Serialization"
+description: "Sheet JSON uses class-transformer for TypeScript serialization. Learn how to convert between plain JSON objects and typed class instances using plainToInstance and instanceToPlain."
+---
+
+Sheet JSON provides typed class representations of workbook data in both TypeScript and Java. Converting between a raw JSON string and a live class instance — and back again — is a core operation in any application that reads or writes workbooks. This page explains how that conversion works in each language, which options are required, and how the SDK handles the special cases that plain JSON serializers would get wrong (the block discriminator and the list item format).
+
+---
+
+## TypeScript Serialization with `class-transformer`
+
+The TypeScript library (`@org-quicko/sheet`) uses the [`class-transformer`](https://github.com/typestack/class-transformer) package. Every Bean class (`Workbook`, `Sheet`, `Table`, `List`) is decorated with `@Expose`, `@Type`, and `@Transform` to control exactly which fields are included and how they are converted.
+
+### Required Setup
+
+`class-transformer` depends on the Reflect metadata polyfill. Import `reflect-metadata` **once**, at the very top of your application entry point, before any other Sheet JSON import.
+
+```typescript
+// main.ts (or index.ts) — must be the first import
+import 'reflect-metadata';
+
+import { plainToInstance, instanceToPlain } from 'class-transformer';
+import { Workbook } from '@org-quicko/sheet';
+```
+
+### Deserializing JSON → Class Instance
+
+Use `plainToInstance` to convert a plain JavaScript object (parsed from a JSON string) into a typed `Workbook` instance.
+
+```typescript
+import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
+import { Workbook } from '@org-quicko/sheet';
+
+const jsonString = `{
+  "@entity": "workbook",
+  "name": "report_workbook",
+  "sheets": [
+    {
+      "@entity": "sheet",
+      "name": "summary_sheet",
+      "blocks": [
+        {
+          "@entity": "table",
+          "name": "payment_table",
+          "header": ["reference", "amount"],
+          "rows": [["PAY-001", 1500]]
+        },
+        {
+          "@entity": "list",
+          "name": "settings_list",
+          "items": [{"currency": "INR"}]
+        }
+      ]
+    }
+  ]
+}`;
+
+const plain = JSON.parse(jsonString);
+const workbook = plainToInstance(Workbook, plain);
+
+// workbook is now a fully typed Workbook instance
+const sheet = workbook.getSheet('summary_sheet');
+const table = sheet?.getBlock('payment_table');
+```
+
+### Serializing Class Instance → JSON
+
+Use `instanceToPlain` to convert a `Workbook` instance back to a plain JavaScript object, then `JSON.stringify` to produce a JSON string. You **must** pass `{ excludeExtraneousValues: true }` to strip any internal properties not decorated with `@Expose`.
+
+```typescript
+import 'reflect-metadata';
+import { instanceToPlain } from 'class-transformer';
+import { Workbook } from '@org-quicko/sheet';
+
+// ... build or mutate your workbook instance ...
+
+const plain = instanceToPlain(workbook, { excludeExtraneousValues: true });
+const jsonString = JSON.stringify(plain, null, 2);
+```
+
+<Note>
+Always pass `{ excludeExtraneousValues: true }` to `instanceToPlain`. Without it, `class-transformer` may include private or internal fields from the class instances that should not appear in the wire format.
+</Note>
+
+### Complete Round-Trip Example
+
+```typescript
+import 'reflect-metadata';
+import { plainToInstance, instanceToPlain } from 'class-transformer';
+import { Workbook, Sheet, Table, List, Item } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+
+// ── Step 1: Deserialize JSON string → Workbook instance ──────────────────────
+const inputJson = `{
+  "@entity": "workbook",
+  "name": "report_workbook",
+  "sheets": [{
+    "@entity": "sheet",
+    "name": "summary_sheet",
+    "blocks": [
+      {
+        "@entity": "table",
+        "name": "payment_table",
+        "header": ["reference", "amount", "status"],
+        "rows": [
+          ["PAY-001", 1500, "settled"],
+          ["PAY-002", 750,  "pending"]
+        ]
+      },
+      {
+        "@entity": "list",
+        "name": "settings_list",
+        "items": [{"currency": "INR"}, {"decimal_places": 2}]
+      }
+    ]
+  }]
+}`;
+
+const workbook = plainToInstance(Workbook, JSON.parse(inputJson));
+
+// ── Step 2: Read and mutate ───────────────────────────────────────────────────
+const sheet = workbook.getSheet('summary_sheet')!;
+const table = sheet.getBlock('payment_table') as Table;
+
+table.addRow(new JSONArray(['PAY-003', 920, 'settled']));
+
+const list = sheet.getBlock('settings_list') as List;
+list.addItem(new Item('timezone', 'Asia/Kolkata'));
+
+// ── Step 3: Serialize Workbook instance → JSON string ────────────────────────
+const plain   = instanceToPlain(workbook, { excludeExtraneousValues: true });
+const outputJson = JSON.stringify(plain, null, 2);
+
+console.log(outputJson);
+```
+
+---
+
+## How the Block Discriminator Works
+
+`Sheet` holds a polymorphic `blocks` array that can contain both `Table` and `List` instances. `class-transformer` needs to know which class to instantiate for each element when deserializing.
+
+The `Sheet` class solves this with `class-transformer`'s discriminator feature. The `@Type` decorator on `blocks` inspects the `@entity` field of each array element and maps it to the correct subtype:
+
+```typescript
+// From Sheet.ts (source reference)
+@Type(() => Block, {
+  keepDiscriminatorProperty: true,
+  discriminator: {
+    property: '@entity',
+    subTypes: [
+      { value: Table, name: SheetJsonEntityType.TABLE },  // "@entity": "table"
+      { value: List,  name: SheetJsonEntityType.LIST  },  // "@entity": "list"
+    ],
+  },
+})
+blocks?: Array<Block>;
+```
+
+`keepDiscriminatorProperty: true` ensures that `@entity` is preserved in the deserialized instance rather than being consumed and discarded. This means the property is still present when the instance is re-serialized with `instanceToPlain`.
+
+---
+
+## How List Items Are Transformed
+
+List items have a special wire format: each item is a single-property object like `{"currency": "INR"}`, but in memory it is an `Item` class instance with `getKey()` and `getValue()` methods.
+
+`class-transformer`'s standard `@Type(() => Item)` decorator cannot handle this mapping on its own because `Item` has no `@Expose`-decorated fields matching the dynamic key. Instead, `List` uses two custom transform functions from `ListTransformer`:
+
+- **`PlainToInstance`** — called during deserialization (`toClassOnly: true`). Iterates `obj.items`, takes the first key-value pair of each single-property object, and returns `new Item(key, value)`.
+- **`InstanceToPlain`** — called during serialization (`toPlainOnly: true`). Maps each `Item` instance back to a `{ [key]: value }` object for the wire format.
+
+```typescript
+// From List.ts (source reference)
+@Type(() => Item)
+@Transform(PlainToInstance, { toClassOnly: true })   // JSON  → Item instance
+@Transform(InstanceToPlain, { toPlainOnly: true })   // Item instance → JSON
+@Expose()
+private items: Array<Item>;
+```
+
+You do not need to call these transformers manually — they run automatically as part of `plainToInstance` and `instanceToPlain`.
+
+---
+
+## XLSX Conversion with `WorkbookConverter`
+
+`WorkbookConverter` handles conversion between XLSX files and `Workbook` instances. Internally it builds a plain JSON object from the XLSX data and then calls `plainToInstance` — so the same deserialization path used for JSON strings is also used for XLSX input.
+
+```typescript
+import 'reflect-metadata';
+import { Workbook } from '@org-quicko/sheet';
+import * as fs from 'fs';
+
+// XLSX → Workbook
+const buffer = fs.readFileSync('report.xlsx');
+const workbook = Workbook.fromXlsx(buffer);
+
+// Workbook → XLSX
+const xlsxWorkbook = Workbook.toXlsx(workbook);
+```
+
+`Workbook.fromXlsx` is a static convenience wrapper around `new WorkbookConverter().toWorkbook(buffer, Workbook)`. For generated subclasses, call the converter directly and pass your generated class as the second argument.
+
+---
+
+## Java Serialization with Jackson
+
+<Tabs>
+  <Tab title="TypeScript">
+    See the TypeScript section above for `plainToInstance` / `instanceToPlain` usage.
+  </Tab>
+  <Tab title="Java">
+    The Java library uses [Jackson](https://github.com/FasterXML/jackson) for JSON serialization. Bean classes are annotated with standard Jackson annotations:
+
+    | Annotation | Purpose |
+    |---|---|
+    | `@JsonProperty("@entity")` | Maps the `entity` field to/from the `@entity` JSON key. |
+    | `@JsonProperty("name")` | Exposes `getName()` as the `name` JSON field. |
+    | `@JsonTypeName("workbook")` | Declares the type name used by the discriminator. |
+    | `@JsonTypeInfo(...)` | Configures polymorphic type handling via the `name` property. |
+    | `@JsonIgnoreProperties(ignoreUnknown = true)` | Silently ignores unrecognized JSON fields. |
+
+    ### JsonMapper
+
+    The `JsonMapper` class extends Jackson's `JsonMapper` (with Jackson 2 defaults) and pre-configures it for Sheet JSON use:
+
+    - Uses `BigDecimal` for floating-point deserialization
+    - Uses `BigInteger` for integer deserialization
+    - Disables automatic getter/setter/is-getter detection, so only `@JsonProperty`-annotated fields are used
+
+    ### Deserializing JSON → Workbook
+
+    ```java
+    import in.org.quicko.sheet.beans.Workbook;
+    import in.org.quicko.sheet.mapper.JsonMapper;
+
+    String jsonString = """
+        {
+          "@entity": "workbook",
+          "name": "report_workbook",
+          "sheets": [{
+            "@entity": "sheet",
+            "name": "summary_sheet",
+            "blocks": [
+              {
+                "@entity": "table",
+                "name": "payment_table",
+                "header": ["reference", "amount"],
+                "rows": [["PAY-001", 1500]]
+              },
+              {
+                "@entity": "list",
+                "name": "settings_list",
+                "items": [{"currency": "INR"}]
+              }
+            ]
+          }]
+        }
+        """;
+
+    JsonMapper mapper = new JsonMapper();
+    Workbook workbook = mapper.readValue(jsonString, Workbook.class);
+
+    Sheet sheet = workbook.getSheet("summary_sheet");
+    ```
+
+    ### Serializing Workbook → JSON
+
+    ```java
+    import in.org.quicko.sheet.beans.Workbook;
+    import in.org.quicko.sheet.mapper.JsonMapper;
+
+    JsonMapper mapper = new JsonMapper();
+    String jsonString = mapper.writeValueAsString(workbook);
+    ```
+
+    ### Complete Java Round-Trip
+
+    ```java
+    import in.org.quicko.sheet.beans.*;
+    import in.org.quicko.sheet.mapper.JsonMapper;
+
+    public class WorkbookExample {
+
+        public static void main(String[] args) throws Exception {
+            String inputJson = """
+                {
+                  "@entity": "workbook",
+                  "name": "report_workbook",
+                  "sheets": [{
+                    "@entity": "sheet",
+                    "name": "summary_sheet",
+                    "blocks": [
+                      {
+                        "@entity": "table",
+                        "name": "payment_table",
+                        "header": ["reference", "amount", "status"],
+                        "rows": [
+                          ["PAY-001", 1500, "settled"],
+                          ["PAY-002", 750,  "pending"]
+                        ]
+                      }
+                    ]
+                  }]
+                }
+                """;
+
+            JsonMapper mapper = new JsonMapper();
+
+            // Deserialize
+            Workbook workbook = mapper.readValue(inputJson, Workbook.class);
+
+            // Access data
+            Sheet sheet = workbook.getSheet("summary_sheet");
+
+            // Serialize back to JSON
+            String outputJson = mapper.writeValueAsString(workbook);
+            System.out.println(outputJson);
+        }
+    }
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+## Serialization Checklist
+
+<Tabs>
+  <Tab title="TypeScript">
+    - [ ] `import 'reflect-metadata'` is the **first** import in the entry point
+    - [ ] `plainToInstance(Workbook, JSON.parse(jsonString))` — pass a plain object, not a string
+    - [ ] `instanceToPlain(workbook, { excludeExtraneousValues: true })` — always include the option
+    - [ ] `JSON.stringify(plain)` — `instanceToPlain` returns a plain object, not a string
+    - [ ] Do not mutate `@entity` or `name` values directly on deserialized instances
+  </Tab>
+  <Tab title="Java">
+    - [ ] Use `JsonMapper` (not plain `ObjectMapper`) for correct number handling
+    - [ ] Pass `Workbook.class` (or your generated subclass) as the second argument to `readValue`
+    - [ ] Use `writeValueAsString` for serialization; the result is a valid Sheet JSON string
+    - [ ] Generated mixin classes wire up the discriminator — do not remove them from the Jackson configuration
+  </Tab>
+</Tabs>

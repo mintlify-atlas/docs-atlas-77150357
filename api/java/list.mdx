@@ -1,0 +1,537 @@
+---
+title: "List Class — Java SDK Reference"
+sidebarTitle: "List"
+description: "The Java List class is a Sheet JSON Block containing key-value Item pairs. Items serialize as single-property JSON objects. Provides full CRUD access for items."
+---
+
+The `List` class is a concrete `Block` subtype that stores an ordered collection of `Item` objects, where each `Item` is a strongly-typed key-value pair. Unlike a `Table`, which models data in rows and columns, a `List` is suited for named scalar values — for example, a set of report parameters, configuration entries, or financial summary fields. `List` is annotated with `@JsonTypeName("list")` so it serializes with the discriminator `"name": "list"`. Items serialize as single-property JSON objects through a custom Jackson serializer/deserializer pair (`CustomItemSerializer` / `CustomItemDeserializer`), meaning each `Item` appears in JSON as `{ "key": value }`. The `List` class supports typed convenience overloads of `addItem` for all common Java numeric, boolean, and string types, making it straightforward to populate without constructing `Item` objects manually.
+
+## Import
+
+```java
+import in.org.quicko.sheet.beans.List;
+import in.org.quicko.sheet.beans.Item;
+```
+
+## Annotation behavior
+
+| Annotation | Value | Effect |
+|---|---|---|
+| `@JsonTypeName` | `"list"` | Writes `"name": "list"` as the type discriminator |
+| `@JsonTypeInfo` | `Id.NAME` on `"name"` | Reads the `name` field to resolve the concrete type on deserialization |
+| `@JsonIgnoreProperties` | `ignoreUnknown = true` | Unknown JSON fields are silently ignored |
+
+The `items` field is serialized as a JSON array under the key `"items"`.
+
+## Constructor
+
+### `List()`
+
+Creates a new, empty list block. Calls `super("list")` to set the entity type. The internal `items` collection is lazily initialized to an empty `ArrayList` on first access.
+
+```java
+List list = new List();
+```
+
+---
+
+## List methods
+
+### `getItems()`
+
+Returns all items in the list as a `java.util.List<Item>`. The list is lazily initialized to an empty `ArrayList` if no items have been added.
+
+**Returns:** `java.util.List<Item>` — the live item collection; never `null`.
+
+```java
+java.util.List<Item> items = list.getItems();
+```
+
+---
+
+### `getItem(String key)`
+
+Retrieves an item by its key using a case-insensitive comparison.
+
+<ParamField path="key" type="String">
+  The key to search for. Comparison is case-insensitive.
+</ParamField>
+
+**Returns:** `Item` — the first item whose key matches, or `null` if none is found.
+
+```java
+Item item = list.getItem("reportDate");
+```
+
+---
+
+### `getItem(int index)`
+
+Retrieves the item at the specified zero-based index.
+
+<ParamField path="index" type="int">
+  Zero-based index of the item to retrieve.
+</ParamField>
+
+**Returns:** `Item` — the item at the given index, or `null` if the index is out of range.
+
+```java
+Item first = list.getItem(0);
+```
+
+---
+
+### `addItem(Item item)`
+
+Appends a pre-constructed `Item` to the list.
+
+<ParamField path="item" type="Item">
+  The `Item` instance to append.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem(new Item("status", "active"));
+```
+
+---
+
+### `addItem(String key, String value)`
+
+Appends an item with a `String` value.
+
+<ParamField path="key" type="String">
+  The key for the new item.
+</ParamField>
+<ParamField path="value" type="String">
+  The string value to store.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem("currency", "USD");
+```
+
+---
+
+### `addItem(String key, Boolean value)`
+
+Appends an item with a `Boolean` value.
+
+<ParamField path="key" type="String">
+  The key for the new item.
+</ParamField>
+<ParamField path="value" type="Boolean">
+  The boolean value to store.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem("isFiled", true);
+```
+
+---
+
+### `addItem(String key, Integer value)`
+
+Appends an item with an `Integer` value. Internally converted to `BigDecimal` for storage.
+
+<ParamField path="key" type="String">
+  The key for the new item.
+</ParamField>
+<ParamField path="value" type="Integer">
+  The integer value to store.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem("year", 2025);
+```
+
+---
+
+### `addItem(String key, Long value)`
+
+Appends an item with a `Long` value. Internally converted to `BigDecimal` for storage.
+
+<ParamField path="key" type="String">
+  The key for the new item.
+</ParamField>
+<ParamField path="value" type="Long">
+  The long value to store.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem("timestamp", 1735689600L);
+```
+
+---
+
+### `addItem(String key, Double value)`
+
+Appends an item with a `Double` value. Internally converted to `BigDecimal` via `BigDecimal.valueOf(value)`.
+
+<ParamField path="key" type="String">
+  The key for the new item.
+</ParamField>
+<ParamField path="value" type="Double">
+  The double value to store.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem("taxRate", 0.18);
+```
+
+---
+
+### `addItem(String key, Float value)`
+
+Appends an item with a `Float` value. Internally converted to `BigDecimal` via `BigDecimal.valueOf(value)`.
+
+<ParamField path="key" type="String">
+  The key for the new item.
+</ParamField>
+<ParamField path="value" type="Float">
+  The float value to store.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem("ratio", 1.5f);
+```
+
+---
+
+### `addItem(String key, java.math.BigDecimal value)`
+
+Appends an item with a `BigDecimal` value stored as-is.
+
+<ParamField path="key" type="String">
+  The key for the new item.
+</ParamField>
+<ParamField path="value" type="java.math.BigDecimal">
+  The `BigDecimal` value to store.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem("totalRevenue", new java.math.BigDecimal("12345678.90"));
+```
+
+---
+
+### `addItem(String key, java.math.BigInteger value)`
+
+Appends an item with a `BigInteger` value. Internally converted to `BigDecimal` via `new BigDecimal(value)`.
+
+<ParamField path="key" type="String">
+  The key for the new item.
+</ParamField>
+<ParamField path="value" type="java.math.BigInteger">
+  The `BigInteger` value to store.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.addItem("recordCount", java.math.BigInteger.valueOf(1_000_000L));
+```
+
+---
+
+### `replaceItem(int index, Item item)`
+
+Replaces the item at the specified zero-based index with the supplied item.
+
+<ParamField path="index" type="int">
+  Zero-based index of the item to replace.
+</ParamField>
+<ParamField path="item" type="Item">
+  The replacement `Item`.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.replaceItem(0, new Item("currency", "EUR"));
+```
+
+---
+
+### `replaceItem(Item item)`
+
+Replaces the first item whose key matches the key of the supplied item (case-insensitive). If no matching item is found the list is left unchanged.
+
+<ParamField path="item" type="Item">
+  The replacement `Item`. Its key is used to identify which existing item to overwrite.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.replaceItem(new Item("status", "closed"));
+```
+
+---
+
+### `removeItem(int index)`
+
+Removes the item at the specified zero-based index. Subsequent items shift down by one position.
+
+<ParamField path="index" type="int">
+  Zero-based index of the item to remove.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.removeItem(0);
+```
+
+---
+
+### `removeItem(String key)`
+
+Removes all items whose key matches the supplied string (case-insensitive).
+
+<ParamField path="key" type="String">
+  The key of the item(s) to remove. Comparison is case-insensitive.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+list.removeItem("obsoleteField");
+```
+
+---
+
+### `size()`
+
+Returns the number of items currently in the list.
+
+**Returns:** `int` — the item count.
+
+```java
+int count = list.size();
+```
+
+---
+
+## Item class
+
+The `Item` class represents a single key-value pair within a `List`. Values are stored internally as `Object` but are normalized at construction time: numeric types such as `Double`, `Float`, `Integer`, `Long`, and `BigInteger` are all converted to `BigDecimal`, while `Boolean` and `String` values are kept as-is. Items serialize as single-property JSON objects using `CustomItemSerializer`.
+
+### Constructors
+
+`Item` provides overloaded constructors for every supported value type:
+
+| Constructor | Value type stored |
+|---|---|
+| `Item(String key, Object value)` | `Object` (raw) |
+| `Item(String key, String value)` | `String` |
+| `Item(String key, Boolean value)` | `Boolean` |
+| `Item(String key, Integer value)` | `BigDecimal` |
+| `Item(String key, Long value)` | `BigDecimal` |
+| `Item(String key, Double value)` | `BigDecimal` |
+| `Item(String key, Float value)` | `BigDecimal` |
+| `Item(String key, BigDecimal value)` | `BigDecimal` |
+| `Item(String key, BigInteger value)` | `BigDecimal` |
+
+```java
+Item s = new Item("name",    "Alice");
+Item n = new Item("score",   95);
+Item b = new Item("active",  true);
+Item d = new Item("amount",  new java.math.BigDecimal("9999.99"));
+```
+
+### `getKey()`
+
+Returns the key of this item.
+
+**Returns:** `String`
+
+```java
+String key = item.getKey();
+```
+
+### `getValue()`
+
+Returns the raw value stored in this item as `Object`. Cast or use a typed accessor to work with the value.
+
+**Returns:** `Object` — may be `String`, `Boolean`, or `BigDecimal`, or `null`.
+
+```java
+Object raw = item.getValue();
+```
+
+### `getStringValue()`
+
+Returns the value cast to `String`, or `null` if the value is `null`.
+
+**Returns:** `String`
+
+```java
+String text = item.getStringValue();
+```
+
+### `getBooleanValue()`
+
+Returns the value cast to `Boolean`, or `null` if the value is `null`.
+
+**Returns:** `Boolean`
+
+```java
+Boolean flag = item.getBooleanValue();
+```
+
+### `getBigDecimalValue()`
+
+Returns the value cast to `BigDecimal`, or `null` if the value is `null`. Applies to all numeric items.
+
+**Returns:** `java.math.BigDecimal`
+
+```java
+java.math.BigDecimal amount = item.getBigDecimalValue();
+```
+
+### `getIntegerValue()`
+
+Returns the `BigDecimal` value converted to `int` via `intValue()`, or `null` if the value is `null`.
+
+**Returns:** `Integer`
+
+```java
+Integer score = item.getIntegerValue();
+```
+
+### `getLongValue()`
+
+Returns the `BigDecimal` value converted to `long` via `longValue()`, or `null` if the value is `null`.
+
+**Returns:** `Long`
+
+```java
+Long timestamp = item.getLongValue();
+```
+
+### `getDoubleValue()`
+
+Returns the `BigDecimal` value converted to `double` via `doubleValue()`, or `null` if the value is `null`.
+
+**Returns:** `Double`
+
+```java
+Double rate = item.getDoubleValue();
+```
+
+### `getBigIntegerValue()`
+
+Returns the `BigDecimal` value converted to `BigInteger` via `toBigInteger()`, or `null` if the value is `null`.
+
+**Returns:** `java.math.BigInteger`
+
+```java
+java.math.BigInteger count = item.getBigIntegerValue();
+```
+
+---
+
+## JsonMapper
+
+`JsonMapper` is a pre-configured Jackson mapper for Sheet JSON deserialization and serialization. It extends `tools.jackson.databind.json.JsonMapper` and applies the following defaults at construction time:
+
+- Registers `JsonOrgModule` so that `org.json.JSONObject` and `JSONArray` types are handled natively.
+- Enables `USE_BIG_DECIMAL_FOR_FLOATS` — floating-point JSON numbers deserialize to `BigDecimal` instead of `double`.
+- Enables `USE_BIG_INTEGER_FOR_INTS` — integer JSON numbers deserialize to `BigInteger` instead of `int`/`long`.
+- Disables automatic visibility of getter, is-getter, and setter methods so only explicitly annotated properties are included.
+
+```java
+import in.org.quicko.sheet.mapper.JsonMapper;
+import in.org.quicko.sheet.beans.Workbook;
+
+JsonMapper mapper = new JsonMapper();
+
+// Deserialize a workbook from a JSON string
+String json = "{ \"name\": \"workbook\", \"@entity\": \"workbook\", \"sheets\": [] }";
+Workbook workbook = mapper.readValue(json, Workbook.class);
+
+// Serialize a workbook back to JSON
+String output = mapper.writeValueAsString(workbook);
+```
+
+---
+
+## Full example
+
+The following example builds a `List` block populated with several typed items, deserializes a workbook from a JSON string, and reads item values back using the typed accessors.
+
+```java
+import in.org.quicko.sheet.beans.Workbook;
+import in.org.quicko.sheet.beans.Sheet;
+import in.org.quicko.sheet.beans.List;
+import in.org.quicko.sheet.beans.Item;
+import in.org.quicko.sheet.mapper.JsonMapper;
+import java.math.BigDecimal;
+
+public class ListExample {
+
+    public static void main(String[] args) throws Exception {
+
+        // Build a List block with typed items
+        List reportMeta = new List();
+        reportMeta.addItem("reportName",  "Annual Summary");
+        reportMeta.addItem("fiscalYear",  2024);
+        reportMeta.addItem("totalRevenue", new BigDecimal("4820000.00"));
+        reportMeta.addItem("isFinalised", true);
+
+        System.out.println("Item count: " + reportMeta.size()); // 4
+
+        // Read values via typed accessors
+        Item nameItem = reportMeta.getItem("reportName");
+        System.out.println("Report: " + nameItem.getStringValue());
+
+        Item yearItem = reportMeta.getItem("fiscalYear");
+        System.out.println("Year:   " + yearItem.getIntegerValue());
+
+        Item revenueItem = reportMeta.getItem("totalRevenue");
+        System.out.println("Revenue: " + revenueItem.getBigDecimalValue());
+
+        Item finalItem = reportMeta.getItem("isFinalised");
+        System.out.println("Final:  " + finalItem.getBooleanValue());
+
+        // Replace an item by key
+        reportMeta.replaceItem(new Item("isFinalised", false));
+
+        // Remove an item by index
+        reportMeta.removeItem(0);
+        System.out.println("Item count after removal: " + reportMeta.size()); // 3
+
+        // Wrap in a sheet and workbook, then round-trip through JSON
+        Sheet sheet = new Sheet();
+        sheet.addBlock(reportMeta);
+
+        Workbook workbook = new Workbook();
+        workbook.addSheet(sheet);
+
+        JsonMapper mapper = new JsonMapper();
+        String json = mapper.writeValueAsString(workbook);
+        System.out.println(json);
+
+        // Deserialize back
+        Workbook restored = mapper.readValue(json, Workbook.class);
+        List restoredList = (List) restored.getSheet(0).getBlock(0);
+        System.out.println("Restored item count: " + restoredList.size());
+    }
+}
+```

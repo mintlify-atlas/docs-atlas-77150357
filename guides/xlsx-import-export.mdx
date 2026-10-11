@@ -1,0 +1,251 @@
+---
+title: "Import and Export XLSX Files with Sheet JSON"
+sidebarTitle: "XLSX Import/Export"
+description: "Convert between Excel .xlsx files and Sheet JSON workbooks using Workbook.fromXlsx and Workbook.toXlsx. Learn how the converter maps sheets, tables, and lists."
+---
+
+Sheet JSON provides first-class support for reading and writing Excel `.xlsx` files through two static methods on the `Workbook` class: `Workbook.fromXlsx` and `Workbook.toXlsx`. Under the hood these methods delegate to `WorkbookConverter`, which is built on top of the [SheetJS](https://sheetjs.com/) (`xlsx`) library. This means any `.xlsx` file that SheetJS can parse can be converted into a fully typed Sheet JSON workbook — and any Sheet JSON workbook can be written back to a binary `.xlsx` buffer.
+
+## API Reference
+
+### `Workbook.fromXlsx(buffer)`
+
+Parses a raw XLSX file buffer and returns a fully populated `Workbook` instance with all sheets, tables, and lists hydrated.
+
+```typescript
+static fromXlsx(buffer: Buffer): Workbook
+```
+
+| Parameter | Type     | Description                              |
+|-----------|----------|------------------------------------------|
+| `buffer`  | `Buffer` | Raw bytes of an `.xlsx` file, e.g. from `fs.readFileSync`. |
+
+**Returns** — a `Workbook` instance.
+
+**Throws** — `ConverterException` if the buffer is not a valid XLSX file or if an internal parsing error occurs.
+
+---
+
+### `Workbook.toXlsx(workbook)`
+
+Converts a `Workbook` instance into a SheetJS workbook object. Pass the result to `XLSX.write` or `XLSX.writeFile` to produce a binary buffer or save to disk.
+
+```typescript
+static toXlsx(workbook: Workbook): XLSX.WorkBook
+```
+
+| Parameter  | Type       | Description                        |
+|------------|------------|------------------------------------|
+| `workbook` | `Workbook` | The Sheet JSON workbook to convert. |
+
+**Returns** — a SheetJS `WorkBook` object.
+
+---
+
+## Block Detection from XLSX
+
+When importing, the converter scans each Excel sheet row-by-row and groups **contiguous non-empty rows** into blocks. A block boundary is defined by one or more completely empty rows: if a row has no non-null cells, the current block ends, and the next non-empty row begins a new block.
+
+The **first cell of the block's first row** is used as the block name. The converter then inspects that name to decide the block type:
+
+- If the name **ends with `list`** (case-insensitive), the block is parsed as a `List`.
+- Otherwise, the block is parsed as a `Table`.
+
+```
+Row 1  │ transactions          ← block name (does not end with "list") → Table
+Row 2  │ id  name  amount      ← header row
+Row 3  │ 1   Alice  100        ← data row
+Row 4  │ 2   Bob    200        ← data row
+Row 5  │ (empty)               ← block separator
+Row 6  │ settings list         ← block name (ends with "list") → List
+Row 7  │ currency   USD        ← key / value pair
+Row 8  │ fiscal_year  2024     ← key / value pair
+```
+
+---
+
+## XLSX Layout Conventions
+
+### Table layout
+
+| Row offset | Content |
+|-----------|---------|
+| `+0`      | Block name (single cell in column A) |
+| `+1`      | Header row — one column name per cell |
+| `+2…`     | Data rows — one value per cell, aligned to the header |
+
+### List layout
+
+| Row offset | Content |
+|-----------|---------|
+| `+0`      | Block name (single cell in column A; must end with `list`) |
+| `+1…`     | Key-value rows — column A is the key, column B is the value |
+
+---
+
+## Epoch Date Handling
+
+The converter applies automatic date conversion whenever a column header (for tables) or a key name (for lists) contains the word `epoch`.
+
+| Direction | Behaviour |
+|-----------|-----------|
+| **Import** (XLSX → Workbook) | If the cell value is an ISO 8601 date string (e.g. `"2024-06-10T00:00:00Z"`), it is converted to a Unix timestamp in **milliseconds** (`number`). |
+| **Export** (Workbook → XLSX) | If the cell value is a `number`, it is converted to an ISO 8601 string (`"yyyy-MM-dd'T'HH:mm:ssXXX"`) before writing to the spreadsheet. |
+
+This means your in-memory workbook always stores dates as epoch-millisecond numbers, while the Excel file always shows human-readable ISO date strings.
+
+---
+
+## Sheet Name Truncation
+
+Excel enforces a hard limit of **31 characters** on sheet tab names. The converter automatically handles this by taking the **last 31 characters** of the sheet's `name` property. If your sheet names include a dot-separated namespace (e.g. `"com.example.myapp.transactions"`), the converter uses the segment after the last dot and then trims to 31 characters.
+
+<Warning>
+  Sheet names longer than 31 characters are silently truncated to the last 31 characters when writing to XLSX. If two sheets produce the same truncated name, SheetJS will throw an error at write time. Keep sheet names short and unique to avoid this.
+</Warning>
+
+---
+
+## Node.js Import/Export Example
+
+<Steps>
+  <Step title="Install dependencies">
+    The XLSX functionality requires the `xlsx` package. It is listed as a peer dependency of `@org-quicko/sheet-core`.
+
+    ```bash
+    npm install @org-quicko/sheet-core xlsx
+    ```
+  </Step>
+
+  <Step title="Import a workbook from an XLSX file">
+    <Tabs>
+      <Tab title="TypeScript">
+        ```typescript
+        import * as fs from "fs";
+        import { Workbook, Table, List, Item } from "@org-quicko/sheet-core";
+
+        // Read the raw file bytes
+        const buffer = fs.readFileSync("./data/report.xlsx");
+
+        // Parse into a Sheet JSON workbook
+        const workbook = Workbook.fromXlsx(buffer);
+
+        // Inspect the result
+        console.log("Sheets:", workbook.length());
+
+        const sheet = workbook.getSheet(0);
+        const table = sheet.getBlock("transactions") as Table;
+
+        console.log("Header:", table.getHeader());
+        console.log("Rows:  ", table.length());
+
+        // Read the first row
+        const firstRow = table.getRow(0);
+        console.log("First row:", firstRow);
+        ```
+      </Tab>
+      <Tab title="Java">
+        ```java
+        import in.org.quicko.sheet.beans.Workbook;
+        import in.org.quicko.sheet.beans.Sheet;
+        import in.org.quicko.sheet.beans.Table;
+        import in.org.quicko.sheet.mapper.JsonMapper;
+        import com.fasterxml.jackson.databind.ObjectMapper;
+
+        import java.nio.file.Files;
+        import java.nio.file.Paths;
+
+        // The Java SDK does not ship a fromXlsx helper.
+        // Deserialise from Sheet JSON format instead:
+        byte[] jsonBytes = Files.readAllBytes(Paths.get("report.json"));
+        JsonMapper mapper = new JsonMapper();
+        Workbook workbook = mapper.readValue(jsonBytes, Workbook.class);
+
+        Sheet sheet = workbook.getSheet(0);
+        Table table = (Table) sheet.getBlock("transactions");
+
+        System.out.println("Rows: " + table.size());
+        System.out.println("First row: " + table.getRow(0));
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+
+  <Step title="Export a workbook back to XLSX">
+    <Tabs>
+      <Tab title="TypeScript">
+        ```typescript
+        import * as XLSX from "xlsx";
+        import * as fs from "fs";
+        import { Workbook, Sheet, Table } from "@org-quicko/sheet-core";
+        import { JSONArray } from "@org-quicko/core";
+
+        // Build a workbook programmatically
+        const workbook = new Workbook();
+        const sheet = new Sheet();
+
+        const table = new Table();
+        table.setHeader(new JSONArray(["id", "product", "qty", "shipped_epoch"]));
+        table.addRow(new JSONArray([1, "Widget A", 10, 1718000000000]));
+        table.addRow(new JSONArray([2, "Widget B", 5,  1718100000000]));
+
+        sheet.addBlock(table);
+        workbook.addSheet(sheet);
+
+        // Convert to a SheetJS workbook
+        const xlsxWorkbook = Workbook.toXlsx(workbook);
+
+        // Write to disk
+        XLSX.writeFile(xlsxWorkbook, "./output/report.xlsx");
+
+        // — or — produce a Buffer without touching the filesystem
+        const buffer = XLSX.write(xlsxWorkbook, { type: "buffer", bookType: "xlsx" });
+        fs.writeFileSync("./output/report.xlsx", buffer);
+        ```
+      </Tab>
+      <Tab title="Java">
+        ```java
+        import in.org.quicko.sheet.beans.*;
+        import in.org.quicko.sheet.mapper.JsonMapper;
+        import org.json.JSONArray;
+
+        import java.nio.file.Files;
+        import java.nio.file.Paths;
+
+        // Build workbook
+        Workbook workbook = new Workbook();
+        Sheet sheet = new Sheet();
+
+        Table table = new Table();
+        table.setHeader(new JSONArray(List.of("id", "product", "qty")));
+        table.addRow(new JSONArray(List.of(1, "Widget A", 10)));
+        table.addRow(new JSONArray(List.of(2, "Widget B", 5)));
+
+        sheet.addBlock(table);
+        workbook.addSheet(sheet);
+
+        // Serialise to Sheet JSON format
+        JsonMapper mapper = new JsonMapper();
+        String json = mapper.writeValueAsString(workbook);
+        Files.write(Paths.get("report.json"), json.getBytes());
+        ```
+      </Tab>
+    </Tabs>
+  </Step>
+</Steps>
+
+---
+
+## Converter Behaviour Summary
+
+| XLSX Concept | Sheet JSON Concept | Notes |
+|---|---|---|
+| Workbook file | `Workbook` | Title set from `Props.Title` if present |
+| Sheet tab | `Sheet` | Sheet name = tab name (max 31 chars on export) |
+| Contiguous row group | `Table` or `List` block | Separated by empty rows |
+| First cell of group | Block `name` | If it ends with `"list"` → `List`; otherwise → `Table` |
+| Table row 2 | `header` | Column names |
+| Table rows 3+ | `rows` | Data rows |
+| List row 2+ column A | `Item` key | |
+| List row 2+ column B | `Item` value | |
+| `epoch` in header/key | Auto date conversion | ISO ↔ epoch ms |

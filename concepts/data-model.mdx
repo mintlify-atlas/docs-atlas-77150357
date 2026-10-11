@@ -1,0 +1,193 @@
+---
+title: "Sheet JSON Data Model: Workbooks, Sheets, and Blocks"
+sidebarTitle: "Data Model"
+description: "Sheet JSON organizes data in a three-level hierarchy: a Workbook contains Sheets, and each Sheet contains Table or List blocks. Learn how each entity is structured."
+---
+
+Sheet JSON represents spreadsheet data as a structured, portable JSON document. Every piece of data lives inside a three-level hierarchy — a **Workbook** at the top, **Sheets** in the middle, and **Blocks** (either Tables or Lists) at the leaf level. Each entity carries a discriminator field (`@entity`) and a human-readable `name`, making it straightforward to reference, validate, and transform workbook data in any language.
+
+## The Hierarchy at a Glance
+
+```
+Workbook
+└── Sheet[]
+    └── Block[] (Table | List)
+        ├── Table → header[] + rows[][]
+        └── List  → items[] (key-value pairs)
+```
+
+Every entity in Sheet JSON descends from a common `BaseObject`. That base class establishes three properties that all entities share: an `@entity` discriminator, a `name`, and an optional `metadata` map.
+
+---
+
+## BaseObject — the Common Foundation
+
+`BaseObject` is the abstract root of the Sheet JSON type hierarchy. Every concrete entity — `Workbook`, `Sheet`, `Table`, and `List` — inherits from it.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `@entity` | `string` | ✅ | Discriminator that identifies the entity type (e.g. `"workbook"`, `"sheet"`, `"table"`, `"list"`). Derived from `@Reflect.metadata` in TypeScript and `@JsonTypeName` in Java. |
+| `name` | `string` | ✅ | Human-readable identifier used for lookups. Name comparisons are case-insensitive. |
+| `metadata` | `object` | ❌ | Optional free-form key-value map for attaching custom attributes to any entity. |
+
+In TypeScript, `@entity` and `name` are read from class-level `Reflect.metadata` entries and serialized via `class-transformer`'s `@Expose` decorator. In Java, they map to Jackson's `@JsonProperty` and `@JsonTypeName`.
+
+---
+
+## Workbook — Top-Level Container
+
+A `Workbook` is the root of every Sheet JSON document. It holds an ordered array of `Sheet` objects and corresponds to a single `.xlsx` file or a standalone JSON document.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `@entity` | `"workbook"` | ✅ | Always the string `"workbook"` (`SheetJsonEntityType.WORKBOOK`). |
+| `name` | `string` | ✅ | Workbook identifier, e.g. `"report_workbook"`. |
+| `sheets` | `Sheet[]` | ✅ | Ordered array of Sheet objects contained in this workbook. |
+| `metadata` | `object` | ❌ | Optional key-value metadata map. |
+
+**Key methods (TypeScript):** `getSheets()`, `getSheet(index)`, `getSheet(name)`, `addSheet(sheet)`, `replaceSheet(sheet)`, `removeSheet(name)`, `length()`.
+
+---
+
+## Sheet — Named Collection of Blocks
+
+A `Sheet` corresponds to a tab in a spreadsheet. It holds an ordered array of `Block` objects (Tables and/or Lists). When deserializing, `Sheet` uses `class-transformer`'s discriminator feature to instantiate the correct `Block` subtype based on the `@entity` field.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `@entity` | `"sheet"` | ✅ | Always the string `"sheet"` (`SheetJsonEntityType.SHEET`). |
+| `name` | `string` | ✅ | Sheet identifier, e.g. `"summary_sheet"`. |
+| `blocks` | `Block[]` | ✅ | Ordered array of Table and/or List blocks on this sheet. |
+| `metadata` | `object` | ❌ | Optional key-value metadata map. |
+
+**Key methods (TypeScript):** `getBlocks()`, `getBlock(index)`, `getBlock(name)`, `addBlock(block)`, `replaceBlock(block)`, `removeBlock(name)`, `length()`.
+
+---
+
+## Block — Abstract Base for Table and List
+
+`Block` is an abstract class that extends `BaseObject`. It carries no additional fields of its own — its sole purpose is to serve as the common supertype for `Table` and `List`, enabling `Sheet` to hold a polymorphic array of blocks.
+
+---
+
+## Table — Columnar Data Block
+
+A `Table` stores data in a familiar row-and-column format. The `header` array defines the column names; the `rows` array holds the data rows, where each inner array aligns positionally with the header.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `@entity` | `"table"` | ✅ | Always the string `"table"` (`SheetJsonEntityType.TABLE`). |
+| `name` | `string` | ✅ | Table identifier, e.g. `"payment_table"`. |
+| `header` | `string[]` | ✅ | Flat array of column name strings. |
+| `rows` | `JSONValue[][]` | ✅ | Array of row arrays. Each inner array must align with `header` by index. |
+| `metadata` | `object` | ❌ | Optional key-value metadata map. |
+
+<Note>
+**Index alignment rule:** Every value in a row belongs to the column at the same index in `header`. For example, if `header` is `["reference", "amount"]`, then `rows[0][0]` is the `reference` value and `rows[0][1]` is the `amount` value. Use `null` for empty or absent cells — never skip an index.
+</Note>
+
+**Key methods (TypeScript):** `getHeader()`, `setHeader(header)`, `getRows()`, `getRow(index)`, `addRow(row)`, `addRows(rows)`, `replaceRow(index, row)`, `removeRow(index)`, `getColumns()`, `popRow()`, `length()`.
+
+The `getColumns()` method returns an array of `Column` objects, one per header entry — useful when you want to process data column-by-column rather than row-by-row.
+
+---
+
+## List — Key-Value Block
+
+A `List` stores an ordered set of key-value pairs. In JSON each pair is represented as a single-property object — for example `{"currency": "INR"}`. In memory, each pair is an `Item` class instance.
+
+| Field | Type | Required | Description |
+|---|---|---|---|
+| `@entity` | `"list"` | ✅ | Always the string `"list"` (`SheetJsonEntityType.LIST`). |
+| `name` | `string` | ✅ | List identifier, e.g. `"settings_list"`. |
+| `items` | `Item[]` | ✅ | Ordered array of key-value `Item` objects. In JSON, each item serializes as `{"key": value}`. |
+| `metadata` | `object` | ❌ | Optional key-value metadata map. |
+
+**Key methods (TypeScript):** `getItems()`, `getItem(key)`, `addItem(item)`, `addItems(items)`, `replaceItem(item)`, `removeItem(index)`, `removeItem(key)`, `length()`.
+
+---
+
+## Item — Key-Value Pair
+
+`Item` wraps a single key-value pair inside a `List`. It is not a `BaseObject` subtype — it has no `@entity` or `metadata` fields. The key is always a `string`; the value is any JSON-compatible `JSONValue` (string, number, boolean, `null`, object, or array).
+
+| Field | Type | Description |
+|---|---|---|
+| `key` | `string` | The item's key. |
+| `value` | `JSONValue` | The item's value. Can be any JSON-compatible type. |
+
+**Key methods:** `getKey()`, `getValue()`, `getStringValue()`, `getNumberValue()`, `getBooleanValue()`, `equals(item)`.
+
+---
+
+## Column — A View Over a Table Column
+
+`Column` extends `Array<JSONValue>` and is produced by `Table.getColumns()`. It is a convenience view — not a standalone storage class — that collects a column's header and all of its row values into a single array.
+
+- **Index 0:** the column header string (e.g. `"amount"`)
+- **Index 1…n:** the row values for that column, in row order
+
+`Column` provides a `getColumnHeader()` method that returns `this[0]` as a string.
+
+---
+
+## Row — A Single Table Row
+
+`Row` extends `JSONArray` and represents one row of a `Table`. It is constructed from an `Array<JSONValue>` and is returned by `Table.getRow(index)`. Values inside a `Row` align with the table's `header` array by index.
+
+---
+
+## Complete Example Workbook
+
+The following JSON document illustrates every entity in a single workbook. The `summary_sheet` contains both a `payment_table` and a `settings_list`.
+
+```json
+{
+  "@entity": "workbook",
+  "name": "report_workbook",
+  "sheets": [
+    {
+      "@entity": "sheet",
+      "name": "summary_sheet",
+      "blocks": [
+        {
+          "@entity": "table",
+          "name": "payment_table",
+          "header": ["reference", "amount", "status"],
+          "rows": [
+            ["PAY-001", 1500, "settled"],
+            ["PAY-002", 750,  "pending"],
+            ["PAY-003", null, "cancelled"]
+          ]
+        },
+        {
+          "@entity": "list",
+          "name": "settings_list",
+          "items": [
+            {"currency": "INR"},
+            {"timezone": "Asia/Kolkata"},
+            {"decimal_places": 2}
+          ]
+        }
+      ]
+    }
+  ]
+}
+```
+
+`"PAY-003"` has a `null` amount because the cell is empty — but the `null` placeholder keeps every row aligned with the three-column header. The `settings_list` block lives on the same sheet as the table, appearing after it in the `blocks` array.
+
+---
+
+## Entity Type Reference
+
+The `SheetJsonEntityType` enum defines the canonical string values for `@entity`:
+
+| Enum Value | JSON String |
+|---|---|
+| `SheetJsonEntityType.WORKBOOK` | `"workbook"` |
+| `SheetJsonEntityType.SHEET` | `"sheet"` |
+| `SheetJsonEntityType.TABLE` | `"table"` |
+| `SheetJsonEntityType.LIST` | `"list"` |
+
+These are the only valid discriminator values for top-level Sheet JSON entities. The enum also defines internal validation types (`ISSUE_ROW`, `ISSUE_TABLE`, etc.) used by the SDK's validator — these are not used in workbook JSON documents.

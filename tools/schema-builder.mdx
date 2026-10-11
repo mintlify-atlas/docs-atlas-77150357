@@ -1,0 +1,103 @@
+---
+title: "Sheet Schema Builder: Design Workbook Schemas Visually"
+sidebarTitle: "Schema Builder"
+description: "The Sheet Schema Builder lets you define a workbook's sheets, tables, and lists interactively and export the resulting JSON Schema for use with the code generators."
+---
+
+The Sheet Schema Builder is a visual editor for designing Sheet JSON workbook schemas. Rather than writing JSON Schema by hand, you can create workbooks, add sheets, and configure table or list blocks through a point-and-click interface. When you are satisfied with the structure, you export a JSON Schema file that can be fed directly into the `schema-to-objects` command (Node.js) or the `schema-to-pojo` Maven plugin (Java) to generate typed classes for your application.
+
+Navigate to the Schema Builder by opening `/sheet-schema-builder` in the running Sheet Tools application, or click **Schema Builder** on the Sheet Tools landing page.
+
+## Schema state and persistence
+
+The Schema Builder stores the active workbook state in a [Zustand](https://zustand-demo.pmnd.rs/) store that is hydrated from — and persisted to — the browser's IndexedDB database on every change. Each workbook is saved as a separate IndexedDB record keyed by its name. You can close the browser tab and return later to continue editing the same schema.
+
+The state model supports multiple workbooks simultaneously. Use the sidebar to switch between them.
+
+## Data types
+
+Each table column and each list field carries a data type. The Schema Builder supports the following types:
+
+| Type | JSON Schema type | Notes |
+|---|---|---|
+| `string` | `"string"` | Default type |
+| `number` | `"number"` | Floating-point values |
+| `integer` | `"integer"` | Whole numbers |
+| `boolean` | `"boolean"` | `true` / `false` |
+| `object` | `"object"` | Nested JSON object |
+| `array` | `"array"` | JSON array |
+
+Fields can also be marked **null allowed**, which adds `"null"` to the JSON Schema type union and permits missing or empty values in the visualiser's validation pass.
+
+Additional constraints available for fields include `minLength`, `maxLength`, `minimum`, `maximum`, `pattern`, `enum`, `format` (`Long` or `BigDecimal`), `description`, and `examples`.
+
+## Workflow
+
+<Steps>
+  <Step title="Create a workbook">
+    Open the sidebar and click **New Workbook**. Enter a workbook name — this becomes the `name` property in the exported schema and in the generated workbook class.
+  </Step>
+  <Step title="Add a sheet">
+    With the workbook selected in the sidebar, click **Add Sheet** and provide a sheet name. Sheets correspond to the `sheets` array in the workbook JSON structure.
+  </Step>
+  <Step title="Add a block">
+    Select a sheet, then click **Add Block**. Choose the block type:
+    - **Table** — a block with a header row and data rows. Each column is defined by name and type.
+    - **List** — a block that holds key-value pairs, where each item is a single-property object such as `{"currency": "INR"}`.
+
+    Give the block a name and confirm.
+  </Step>
+  <Step title="Configure a table block">
+    Click the table block to open its editor. Use **Add Column** to append a new column. For each column, set the column name and select a data type. Toggle **Null Allowed** if the column may contain empty cells. You can reorder columns by dragging the grip handle, and remove any column with the delete button.
+  </Step>
+  <Step title="Configure a list block">
+    Click the list block to open its editor. Use **Add Field** to append a new key-value field. Set the key name and the expected value type. Mark **Null Allowed** if the value may be absent.
+  </Step>
+  <Step title="Export the JSON Schema">
+    Click **Export Schema** in the top toolbar. The builder serialises the current workbook definition into a standards-compliant JSON Schema file and triggers a browser download. The file is ready to use with the code generators.
+  </Step>
+  <Step title="Import an existing schema">
+    To continue editing a schema you created previously, click **Import Schema** and either paste the JSON Schema text or upload the file. The builder reconstructs the workbook, sheets, and blocks from the schema and sets it as the active workbook. If a workbook with the same name already exists, a confirmation dialog asks whether to overwrite it.
+  </Step>
+</Steps>
+
+## Using the exported schema with generators
+
+The JSON Schema file exported by the Schema Builder describes the complete workbook structure and can be consumed by both supported code generators.
+
+**Node.js — `schema-to-objects`**
+
+```bash
+npx @org-quicko/sheet-generator --schema path/to/schema.json --output src/generated
+```
+
+**Java — `schema-to-pojo` Maven plugin**
+
+```xml
+<plugin>
+  <groupId>in.org.quicko.sheet</groupId>
+  <artifactId>sheet-generator-maven-plugin</artifactId>
+  <executions>
+    <execution>
+      <goals><goal>schema-to-pojo</goal></goals>
+      <configuration>
+        <schemaPath>src/main/resources/schema.json</schemaPath>
+        <javaPackage>com.example.workbook</javaPackage>
+        <outputDirectory>src/main/java</outputDirectory>
+      </configuration>
+    </execution>
+  </executions>
+</plugin>
+```
+
+After regenerating classes, compile your code or run a TypeScript type-check and then deserialise a representative workbook JSON file to verify that the generated name mappings and value conversions are correct.
+
+<Tip>
+  If you already have a workbook JSON file and want to design its schema interactively, use the `json-to-schema` CLI command from the Node.js generator to derive a starting-point schema from the existing data:
+
+  ```bash
+  npx @org-quicko/sheet-generator json-to-schema --input workbook.json --output schema.json
+  ```
+
+  Then import the resulting `schema.json` into the Schema Builder to refine field types, add constraints, or extend the structure before exporting the final schema.
+</Tip>

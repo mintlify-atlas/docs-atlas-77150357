@@ -1,0 +1,234 @@
+---
+title: "Workbook Class — Java SDK Reference"
+sidebarTitle: "Workbook"
+description: "The Java Workbook class is the top-level Sheet JSON container. Jackson-annotated bean for serialization. Provides sheet management methods for get, add, replace, and remove."
+---
+
+The `Workbook` class is the root container of the Sheet JSON data model. It holds an ordered list of `Sheet` objects and serves as the entry point for building, reading, and manipulating structured spreadsheet data in Java. `Workbook` is a Jackson-annotated bean annotated with `@JsonTypeName("workbook")`, which means it serializes to and deserializes from JSON with a `"name": "workbook"` discriminator property. It extends `BaseObject`, which provides inherited `name`, `entity`, and `metadata` fields. Instances are created with the default no-argument constructor and can be round-tripped through JSON using the bundled `JsonMapper`.
+
+## Installation
+
+Add the following dependency to your `pom.xml`:
+
+```xml
+<dependency>
+  <groupId>in.org.quicko.sheet</groupId>
+  <artifactId>core</artifactId>
+  <version>2.0.0</version>
+</dependency>
+```
+
+## Import
+
+```java
+import in.org.quicko.sheet.beans.Workbook;
+import in.org.quicko.sheet.beans.Sheet;
+import in.org.quicko.sheet.mapper.JsonMapper;
+```
+
+## Annotation behavior
+
+`Workbook` carries three Jackson annotations that control its serialization shape:
+
+| Annotation | Value | Effect |
+|---|---|---|
+| `@JsonTypeName` | `"workbook"` | Sets the type discriminator string written to the `name` property |
+| `@JsonTypeInfo` | `Id.NAME` on `"name"` | Reads the `name` property to select the concrete type during deserialization |
+| `@JsonIgnoreProperties` | `ignoreUnknown = true` | Unknown JSON fields are silently skipped rather than raising an error |
+
+## Constructor
+
+### `Workbook()`
+
+Creates a new, empty workbook. Internally calls `super("workbook")`, which sets the `@entity` field to `"workbook"` and leaves the `sheets` list uninitialized (lazily allocated on first access).
+
+```java
+Workbook workbook = new Workbook();
+```
+
+## Methods
+
+### `getSheets()`
+
+Returns the complete list of `Sheet` objects contained in this workbook. If no sheets have been added yet the list is lazily initialized to an empty `ArrayList` and returned.
+
+**Returns:** `java.util.List<Sheet>` — the ordered list of sheets; never `null`.
+
+```java
+java.util.List<Sheet> sheets = workbook.getSheets();
+```
+
+---
+
+### `getSheet(int index)`
+
+Retrieves the sheet at the specified zero-based position.
+
+<ParamField path="index" type="int">
+  Zero-based index of the sheet to retrieve.
+</ParamField>
+
+**Returns:** `Sheet` — the sheet at the given index.
+
+**Throws:** `ArrayIndexOutOfBoundsException` if `index` is greater than or equal to the number of sheets.
+
+```java
+Sheet first = workbook.getSheet(0);
+```
+
+---
+
+### `getSheet(String name)`
+
+Retrieves a sheet by its name using a case-insensitive comparison.
+
+<ParamField path="name" type="String">
+  The name of the sheet to look up. Comparison is case-insensitive.
+</ParamField>
+
+**Returns:** `Sheet` — the first sheet whose name matches, or `null` if no match is found.
+
+```java
+Sheet summary = workbook.getSheet("Summary");
+if (summary != null) {
+    // process sheet
+}
+```
+
+---
+
+### `addSheet(Sheet sheet)`
+
+Appends a single sheet to the end of the workbook's sheet list.
+
+<ParamField path="sheet" type="Sheet">
+  The `Sheet` instance to append.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+Sheet sheet = new Sheet();
+workbook.addSheet(sheet);
+```
+
+---
+
+### `addSheets(java.util.List<Sheet> sheets)`
+
+Appends all sheets from the provided list to the workbook in iteration order.
+
+<ParamField path="sheets" type="java.util.List<Sheet>">
+  A list of `Sheet` instances to append.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+java.util.List<Sheet> newSheets = java.util.List.of(sheetA, sheetB);
+workbook.addSheets(newSheets);
+```
+
+---
+
+### `replaceSheet(Sheet sheet)`
+
+Replaces the first sheet whose name matches the name of the supplied sheet (case-insensitive). If no sheet with a matching name exists the workbook is left unchanged.
+
+<ParamField path="sheet" type="Sheet">
+  The replacement `Sheet`. Its `getName()` value is used to identify which existing sheet to overwrite.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+Sheet updatedSheet = new Sheet();
+// updatedSheet must have the same name as the sheet being replaced
+workbook.replaceSheet(updatedSheet);
+```
+
+---
+
+### `removeSheet(int index)`
+
+Removes the sheet at the specified zero-based index.
+
+<ParamField path="index" type="int">
+  Zero-based index of the sheet to remove.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+workbook.removeSheet(0);
+```
+
+---
+
+### `removeSheet(String name)`
+
+Removes the first sheet whose name matches the supplied string (case-insensitive). Does nothing if no match is found.
+
+<ParamField path="name" type="String">
+  The name of the sheet to remove. Comparison is case-insensitive.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+workbook.removeSheet("OldSheet");
+```
+
+---
+
+### `size()`
+
+Returns the number of sheets currently in the workbook.
+
+**Returns:** `int` — the sheet count.
+
+```java
+int count = workbook.size(); // e.g. 3
+```
+
+---
+
+## Full example
+
+The following example builds a workbook, serializes it to JSON with `JsonMapper`, and then deserializes it back.
+
+```java
+import in.org.quicko.sheet.beans.Workbook;
+import in.org.quicko.sheet.beans.Sheet;
+import in.org.quicko.sheet.beans.Table;
+import in.org.quicko.sheet.mapper.JsonMapper;
+import org.json.JSONArray;
+
+public class WorkbookExample {
+
+    public static void main(String[] args) throws Exception {
+
+        // Build the workbook
+        Workbook workbook = new Workbook();
+
+        Sheet sheet = new Sheet();
+
+        Table table = new Table();
+        table.setHeader(new JSONArray(java.util.List.of("Name", "Age", "City")));
+        table.addRow(new JSONArray(java.util.List.of("Alice", 30, "New York")));
+        table.addRow(new JSONArray(java.util.List.of("Bob",   25, "London")));
+
+        sheet.addBlock(table);
+        workbook.addSheet(sheet);
+
+        // Serialize to JSON
+        JsonMapper mapper = new JsonMapper();
+        String json = mapper.writeValueAsString(workbook);
+        System.out.println(json);
+
+        // Deserialize back
+        Workbook restored = mapper.readValue(json, Workbook.class);
+        System.out.println("Sheet count: " + restored.size());
+    }
+}
+```

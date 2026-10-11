@@ -1,0 +1,201 @@
+---
+title: "Workbook Class — Node.js SDK Reference"
+sidebarTitle: "Workbook"
+description: "The Workbook class is the top-level container in Sheet JSON. It holds an array of Sheet objects and provides methods to get, add, replace, and remove sheets."
+---
+
+`Workbook` is the root object in the Sheet JSON data model. Every file or payload begins with a single `Workbook` instance that owns an ordered collection of `Sheet` objects. You can build a workbook programmatically by constructing and adding sheets, or you can hydrate one directly from an XLSX buffer using the static `fromXlsx` helper. The class extends `BaseObject`, so it also carries a `name`, an `@entity` discriminator, and an optional freeform `metadata` bag.
+
+## Import
+
+```typescript
+import { Workbook } from '@org-quicko/sheet';
+```
+
+## Constructor
+
+### `new Workbook()`
+
+Creates a new, empty `Workbook` and initialises an empty `sheets` array.
+
+```typescript
+const workbook = new Workbook();
+```
+
+## Instance Methods
+
+### `getSheets()`
+
+Returns the full, ordered array of sheets contained in this workbook.
+
+**Returns:** `Array<Sheet>`
+
+---
+
+### `getSheet(index)` <small>(overload 1)</small>
+
+Retrieves a sheet by its zero-based position in the sheets array.
+
+<ParamField path="index" type="number" required>
+  Zero-based index of the sheet to retrieve.
+</ParamField>
+
+**Returns:** `Sheet`
+
+**Throws:** `RangeError` when `index` is equal to or greater than the number of sheets.
+
+---
+
+### `getSheet(name)` <small>(overload 2)</small>
+
+Retrieves a sheet by name using a case-insensitive comparison.
+
+<ParamField path="name" type="string" required>
+  The name of the sheet to look up. Matching is case-insensitive.
+</ParamField>
+
+**Returns:** `Sheet | null` — the matching sheet, or `null` if no sheet with that name exists.
+
+---
+
+### `addSheet(sheet)`
+
+Appends a sheet to the end of the sheets array.
+
+<ParamField path="sheet" type="Sheet" required>
+  The `Sheet` instance to append.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `replaceSheet(sheet)`
+
+Finds the existing sheet whose name matches `sheet.getName()` (case-insensitive) and swaps it with the provided instance. If no matching sheet is found, no change is made.
+
+<ParamField path="sheet" type="Sheet" required>
+  The replacement `Sheet` instance. Its `name` is used to identify which existing sheet to overwrite.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `removeSheet(name)`
+
+Removes the sheet with the given name from the workbook.
+
+<ParamField path="name" type="string" required>
+  The name of the sheet to remove. Matching is case-insensitive.
+</ParamField>
+
+**Returns:** `void`
+
+**Throws:** `RangeError` when no sheet with the supplied name exists.
+
+---
+
+### `length()`
+
+Returns the total number of sheets in this workbook.
+
+**Returns:** `number`
+
+---
+
+## Static Methods
+
+### `Workbook.fromXlsx(buffer)`
+
+Parses an XLSX file buffer and returns a fully hydrated `Workbook` instance. This is a convenience wrapper around `WorkbookConverter.toWorkbook`.
+
+<ParamField path="buffer" type="Buffer" required>
+  A Node.js `Buffer` containing the raw bytes of an `.xlsx` file.
+</ParamField>
+
+**Returns:** `Workbook`
+
+---
+
+### `Workbook.toXlsx(workbook)`
+
+Converts a `Workbook` instance into a SheetJS workbook object that can be written to disk or streamed. This is a convenience wrapper around `WorkbookConverter.toXlsx`.
+
+<ParamField path="workbook" type="Workbook" required>
+  The `Workbook` instance to convert.
+</ParamField>
+
+**Returns:** `XLSX.WorkBook` (SheetJS workbook object)
+
+---
+
+## Inherited from `BaseObject`
+
+### `getName()`
+
+Returns the entity name string as registered via `@Reflect.metadata('name', ...)` on the class.
+
+**Returns:** `string`
+
+---
+
+### `getEntity()`
+
+Returns the `@entity` discriminator string (e.g. `"workbook"`). Used when serialising to JSON to identify the type of the object.
+
+**Returns:** `string`
+
+---
+
+### `getMetadata()`
+
+Returns the freeform metadata map attached to this object. Initialised to an empty `JSONObject` on first access if it has not been set.
+
+**Returns:** `JSONObject`
+
+---
+
+### `setMetadata(value)`
+
+Replaces the metadata map on this object.
+
+<ParamField path="value" type="JSONObject" required>
+  The new metadata object.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+## Usage Example
+
+```typescript
+import { Workbook, Sheet, Table } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+import * as fs from 'fs';
+
+// Build a workbook programmatically
+const workbook = new Workbook();
+
+const sheet = new Sheet();
+// (set sheet name via metadata or subclass reflection)
+
+const table = new Table();
+table.setHeader(new JSONArray(['name', 'score']));
+table.addRow(new JSONArray(['Alice', 98]));
+table.addRow(new JSONArray(['Bob', 87]));
+
+sheet.addBlock(table);
+workbook.addSheet(sheet);
+
+console.log(workbook.length()); // 1
+
+// Round-trip through XLSX
+const xlsxWorkbook = Workbook.toXlsx(workbook);
+
+// Parse from an existing file
+const buffer = fs.readFileSync('report.xlsx');
+const loaded = Workbook.fromXlsx(buffer);
+console.log(loaded.getSheets().length);
+```

@@ -1,72 +1,98 @@
 {
   "$schema": "https://mintlify.com/docs.json",
-  "theme": "mint",
-  "name": "Mintlify Starter Kit",
+  "name": "Sheet JSON",
+  "theme": "luma",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
-  },
-  "favicon": "/favicon.svg",
-  "navigation": {
-    "pages": [
-      {
-        "group": "Getting Started",
-        "pages": [
-          "index",
-          "quickstart"
-        ]
-      }
-    ],
-    "global": {
-      "anchors": [
-        {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
-        },
-        {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
-        }
-      ]
-    }
-  },
-  "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "primary": "#2563EB",
+    "light": "#EFF6FF",
+    "dark": "#1E40AF"
   },
   "navbar": {
-    "links": [
-      {
-        "label": "Support",
-        "href": "mailto:support@mintlify.com"
-      }
-    ],
     "primary": {
-      "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "type": "github",
+      "href": "https://github.com/in-org-quicko/sheet-json"
     }
-  },
-  "contextual": {
-    "options": [
-      "copy",
-      "view",
-      "chatgpt",
-      "claude",
-      "perplexity",
-      "mcp",
-      "cursor",
-      "vscode"
-    ]
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/mintlify",
-      "github": "https://github.com/mintlify",
-      "linkedin": "https://linkedin.com/company/mintlify"
+      "github": "https://github.com/in-org-quicko/sheet-json"
     }
+  },
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Concepts",
+            "pages": [
+              "concepts/data-model",
+              "concepts/json-structure",
+              "concepts/serialization"
+            ]
+          },
+          {
+            "group": "Guides",
+            "pages": [
+              "guides/working-with-tables",
+              "guides/working-with-lists",
+              "guides/xlsx-import-export",
+              "guides/metadata"
+            ]
+          },
+          {
+            "group": "Generators",
+            "pages": [
+              "generators/overview",
+              "generators/nodejs-generator",
+              "generators/java-generator"
+            ]
+          },
+          {
+            "group": "Sheet Tools",
+            "pages": [
+              "tools/overview",
+              "tools/schema-builder",
+              "tools/sheet-visualiser"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Node.js SDK",
+            "pages": [
+              "api/workbook",
+              "api/sheet",
+              "api/table",
+              "api/list",
+              "api/item",
+              "api/row",
+              "api/column",
+              "api/workbook-converter",
+              "api/types"
+            ]
+          },
+          {
+            "group": "Java SDK",
+            "pages": [
+              "api/java/workbook",
+              "api/java/sheet",
+              "api/java/table",
+              "api/java/list"
+            ]
+          }
+        ]
+      }
+    ]
   }
 }

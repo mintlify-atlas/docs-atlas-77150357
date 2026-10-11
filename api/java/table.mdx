@@ -1,0 +1,231 @@
+---
+title: "Table Class — Java SDK Reference"
+sidebarTitle: "Table"
+description: "The Java Table class stores tabular data with a header row and data rows. Use it to build and query structured sheet blocks in the Sheet JSON Java SDK."
+---
+
+The `Table` class is a concrete `Block` subtype that represents a two-dimensional tabular dataset. It stores an optional header — a `JSONArray` of column labels — and an ordered collection of data rows, each of which is itself a `JSONArray` of cell values. `Table` is annotated with `@JsonTypeName("table")` so it serializes with the discriminator `"name": "table"`, and it integrates with the `Block` polymorphic type hierarchy through the `@JsonSubTypes` mapping on `Block`. Rows and the header use `org.json.JSONArray` as their container type, keeping cell values in their natural JSON representation. Cell values written into a table via `addRow` or `replaceRow` may be strings, numbers, booleans, or `null`, consistent with the JSON data model.
+
+## Import
+
+```java
+import in.org.quicko.sheet.beans.Table;
+import org.json.JSONArray;
+```
+
+## Annotation behavior
+
+| Annotation | Value | Effect |
+|---|---|---|
+| `@JsonTypeName` | `"table"` | Writes `"name": "table"` as the type discriminator |
+| `@JsonTypeInfo` | `Id.NAME` on `"name"` | Reads the `name` field to resolve the concrete type on deserialization |
+| `@JsonIgnoreProperties` | `ignoreUnknown = true` | Unknown JSON fields are silently ignored |
+
+The `header` and `rows` fields are each serialized as a JSON array via `@JsonProperty`.
+
+## Constructor
+
+### `Table()`
+
+Creates a new, empty table. Calls `super("table")` which sets the entity type inherited from `Block`. Both `header` and `rows` are lazily initialized to empty `JSONArray` instances on first access.
+
+```java
+Table table = new Table();
+```
+
+## Methods
+
+### `getHeader()`
+
+Returns the header row of the table as a `JSONArray`. Each element is expected to be a column label string. If no header has been set, an empty `JSONArray` is returned.
+
+**Returns:** `JSONArray` — the header array; never `null`.
+
+```java
+JSONArray header = table.getHeader();
+```
+
+---
+
+### `setHeader(JSONArray header)`
+
+Sets the table header. If a header already exists, its contents are cleared and replaced with the new value. If no header has been set yet, the supplied array is assigned directly.
+
+<ParamField path="header" type="JSONArray">
+  A `JSONArray` of column label strings to use as the table header.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+table.setHeader(new JSONArray(java.util.List.of("Name", "Score", "Grade")));
+```
+
+---
+
+### `getRows()`
+
+Returns all data rows as a `JSONArray` of `JSONArray` elements. Each inner array represents one row. If no rows have been added, an empty `JSONArray` is returned.
+
+**Returns:** `JSONArray` — the rows array; never `null`.
+
+```java
+JSONArray allRows = table.getRows();
+```
+
+---
+
+### `getRow(int index)`
+
+Retrieves a single row by its zero-based index.
+
+<ParamField path="index" type="int">
+  Zero-based index of the row to retrieve.
+</ParamField>
+
+**Returns:** `JSONArray` — the row at the specified index.
+
+**Throws:** `ArrayIndexOutOfBoundsException` if `index` is greater than or equal to `size()`.
+
+```java
+JSONArray firstRow = table.getRow(0);
+String name = firstRow.getString(0);
+```
+
+---
+
+### `addRow(JSONArray row)`
+
+Appends a single row to the end of the table.
+
+<ParamField path="row" type="JSONArray">
+  A `JSONArray` representing one data row. The element count should match the header length.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+table.addRow(new JSONArray(java.util.List.of("Alice", 95, "A")));
+```
+
+---
+
+### `addRows(JSONArray rows)`
+
+Appends multiple rows to the table. Each element of the supplied `JSONArray` must itself be a `JSONArray` representing one row.
+
+<ParamField path="rows" type="JSONArray">
+  A `JSONArray` of row arrays to append.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+JSONArray batch = new JSONArray();
+batch.put(new JSONArray(java.util.List.of("Bob",   82, "B")));
+batch.put(new JSONArray(java.util.List.of("Carol", 91, "A")));
+table.addRows(batch);
+```
+
+---
+
+### `replaceRow(int index, JSONArray row)`
+
+Replaces the row at the specified index with the supplied row.
+
+<ParamField path="index" type="int">
+  Zero-based index of the row to replace.
+</ParamField>
+<ParamField path="row" type="JSONArray">
+  The replacement row as a `JSONArray`.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+table.replaceRow(0, new JSONArray(java.util.List.of("Alice", 98, "A+")));
+```
+
+---
+
+### `removeRow(int index)`
+
+Removes the row at the specified zero-based index. Subsequent rows shift down by one position.
+
+<ParamField path="index" type="int">
+  Zero-based index of the row to remove.
+</ParamField>
+
+**Returns:** `void`
+
+```java
+table.removeRow(1);
+```
+
+---
+
+### `size()`
+
+Returns the number of data rows in the table (excluding the header).
+
+**Returns:** `int` — the row count, equivalent to `getRows().length()`.
+
+```java
+int rowCount = table.size();
+```
+
+---
+
+## Full example
+
+The following example builds a `Table` with a header and several data rows, attaches it to a sheet inside a workbook, and serializes everything to JSON.
+
+```java
+import in.org.quicko.sheet.beans.Workbook;
+import in.org.quicko.sheet.beans.Sheet;
+import in.org.quicko.sheet.beans.Table;
+import in.org.quicko.sheet.mapper.JsonMapper;
+import org.json.JSONArray;
+
+public class TableExample {
+
+    public static void main(String[] args) throws Exception {
+
+        // Create the table and set its header
+        Table table = new Table();
+        table.setHeader(new JSONArray(java.util.List.of("Employee", "Department", "Salary")));
+
+        // Add individual rows
+        table.addRow(new JSONArray(java.util.List.of("Alice",   "Engineering", 95000)));
+        table.addRow(new JSONArray(java.util.List.of("Bob",     "Marketing",   72000)));
+        table.addRow(new JSONArray(java.util.List.of("Carol",   "Engineering", 98000)));
+
+        // Add a batch of rows
+        JSONArray batch = new JSONArray();
+        batch.put(new JSONArray(java.util.List.of("David",  "Sales",       65000)));
+        batch.put(new JSONArray(java.util.List.of("Eve",    "Engineering", 105000)));
+        table.addRows(batch);
+
+        // Update a row
+        table.replaceRow(1, new JSONArray(java.util.List.of("Bob", "Marketing", 75000)));
+
+        // Remove the last row
+        table.removeRow(table.size() - 1);
+
+        System.out.println("Row count: " + table.size()); // 4
+        System.out.println("Header:    " + table.getHeader());
+        System.out.println("First row: " + table.getRow(0));
+
+        // Wrap in a sheet and workbook, then serialize
+        Sheet sheet = new Sheet();
+        sheet.addBlock(table);
+
+        Workbook workbook = new Workbook();
+        workbook.addSheet(sheet);
+
+        JsonMapper mapper = new JsonMapper();
+        String json = mapper.writeValueAsString(workbook);
+        System.out.println(json);
+    }
+}
+```

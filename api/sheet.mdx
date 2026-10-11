@@ -1,0 +1,171 @@
+---
+title: "Sheet Class — Node.js SDK Reference"
+sidebarTitle: "Sheet"
+description: "The Sheet class represents a single sheet inside a Workbook. It contains an array of Block objects (Table or List) with methods for block management."
+---
+
+`Sheet` represents one tab or section inside a `Workbook`. Each sheet owns an ordered collection of `Block` objects — either `Table` or `List` — that hold the actual data. When a Sheet is deserialised from JSON, the `@entity` discriminator on each block entry is used to reconstruct the correct concrete type automatically. `Sheet` extends `BaseObject`, giving it a `name`, an `@entity` value of `"sheet"`, and a `metadata` bag.
+
+## Import
+
+```typescript
+import { Sheet } from '@org-quicko/sheet';
+```
+
+## Constructor
+
+### `new Sheet()`
+
+Creates a new, empty `Sheet` and initialises an empty `blocks` array.
+
+```typescript
+const sheet = new Sheet();
+```
+
+## Instance Methods
+
+### `getBlocks()`
+
+Returns the full, ordered array of blocks contained in this sheet.
+
+**Returns:** `Array<Block>`
+
+---
+
+### `getBlock(index)` <small>(overload 1)</small>
+
+Retrieves a block by its zero-based position in the blocks array.
+
+<ParamField path="index" type="number" required>
+  Zero-based index of the block to retrieve.
+</ParamField>
+
+**Returns:** `Block`
+
+**Throws:** `RangeError` when `index` is equal to or greater than the number of blocks.
+
+---
+
+### `getBlock(name)` <small>(overload 2)</small>
+
+Retrieves a block by name using a case-insensitive comparison.
+
+<ParamField path="name" type="string" required>
+  The name of the block to look up. Matching is case-insensitive.
+</ParamField>
+
+**Returns:** `Block | null` — the matching block, or `null` if no block with that name exists.
+
+---
+
+### `addBlock(block)`
+
+Appends a block to the end of the blocks array.
+
+<ParamField path="block" type="Block" required>
+  The `Block` instance (either a `Table` or a `List`) to append.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `replaceBlock(block)`
+
+Finds the existing block whose name matches `block.getName()` (case-insensitive) and swaps it with the provided instance. If no matching block is found, no change is made.
+
+<ParamField path="block" type="Block" required>
+  The replacement `Block` instance. Its `name` is used to identify which existing block to overwrite.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `removeBlock(name)`
+
+Removes the block with the given name from the sheet.
+
+<ParamField path="name" type="string" required>
+  The name of the block to remove. Matching is case-insensitive.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+### `length()`
+
+Returns the total number of blocks in this sheet.
+
+**Returns:** `number`
+
+---
+
+## Inherited from `BaseObject`
+
+### `getName()`
+
+Returns the entity name string as registered via `@Reflect.metadata('name', ...)` on the class.
+
+**Returns:** `string`
+
+---
+
+### `getEntity()`
+
+Returns the `@entity` discriminator string (`"sheet"`). Used when serialising to JSON.
+
+**Returns:** `string`
+
+---
+
+### `getMetadata()`
+
+Returns the freeform metadata map attached to this sheet. Initialised to an empty `JSONObject` on first access if it has not been set.
+
+**Returns:** `JSONObject`
+
+---
+
+### `setMetadata(value)`
+
+Replaces the metadata map on this sheet.
+
+<ParamField path="value" type="JSONObject" required>
+  The new metadata object.
+</ParamField>
+
+**Returns:** `void`
+
+---
+
+## Usage Example
+
+```typescript
+import { Sheet, Table, List, Item } from '@org-quicko/sheet';
+import { JSONArray } from '@org-quicko/core';
+
+const sheet = new Sheet();
+
+// Add a Table block
+const table = new Table();
+table.setHeader(new JSONArray(['product', 'qty', 'price']));
+table.addRow(new JSONArray(['Widget', 10, 4.99]));
+sheet.addBlock(table);
+
+// Add a List block
+const list = new List();
+list.addItem(new Item('currency', 'USD'));
+sheet.addBlock(list);
+
+console.log(sheet.length()); // 2
+
+// Retrieve by name (case-insensitive)
+const block = sheet.getBlock('table');
+console.log(block?.getName()); // 'table'
+
+// Retrieve by index
+const first = sheet.getBlock(0);
+console.log(first.getEntity()); // 'table'
+```

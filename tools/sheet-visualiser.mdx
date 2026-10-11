@@ -1,0 +1,82 @@
+---
+title: "Sheet Visualiser: View and Edit Workbook Data in the Browser"
+sidebarTitle: "Sheet Visualiser"
+description: "The Sheet Visualiser renders Sheet JSON workbook data as interactive tables and lists. Load a workbook, inspect its sheets and blocks, and add or modify data."
+---
+
+The Sheet Visualiser renders a Sheet JSON workbook as a browsable, editable spreadsheet-like interface. Each sheet in the workbook becomes an entry in a collapsible sidebar tree; selecting a block within a sheet displays its data in the main content area — either as a virtualized scrollable grid for table blocks or as a two-column key-value table for list blocks. You can optionally load a JSON Schema alongside the workbook data, and the visualiser will validate every cell and flag violations with inline error indicators.
+
+Navigate to the Sheet Visualiser by opening `/sheet-visualiser` in the running Sheet Tools application, or click **Sheet Visualiser** on the Sheet Tools landing page.
+
+## Loading a workbook
+
+The visualiser accepts workbook data in three ways: file upload, pasted JSON, or a remote URL. All three are available under the **Import Data** dialog in the sidebar.
+
+<Steps>
+  <Step title="Open the Import Data dialog">
+    Click **Import Data** in the sidebar header. A dialog opens with three tabs: **File Upload**, **Paste JSON**, and **From URL**.
+  </Step>
+  <Step title="Provide the workbook JSON">
+    Choose the tab that matches how you have your data:
+    - **File Upload** — click the upload area and select a `.json` file from your filesystem.
+    - **Paste JSON** — paste the workbook JSON text directly into the textarea and click **Import Data**.
+    - **From URL** — enter a URL that responds with workbook JSON and click **Fetch Data**. The visualiser fetches the document and parses it in the browser.
+
+    A valid workbook must have `"@entity": "workbook"` at the top level and a `sheets` array. Each sheet must have `"@entity": "sheet"` and a `blocks` array.
+  </Step>
+  <Step title="Browse sheets and blocks">
+    After import, the sidebar shows the workbook name and a collapsible tree of its sheets and blocks. Click a sheet row to expand it and reveal its blocks. Click any block to display it in the main content area.
+
+    The sidebar also shows a row count or item count badge next to each block, and highlights any sheet or block that contains validation errors with a red background and an alert icon.
+  </Step>
+  <Step title="Inspect the data">
+    - **Table blocks** are rendered as a virtualized scrollable grid using the `VirtualizedTable` component. Column widths are adjustable by dragging the resize handle in the header. Click a cell to select it; double-click to edit the value inline. Press **Enter** to commit the edit or **Escape** to cancel.
+    - **List blocks** are rendered as a two-column key-value table. Each row shows one key-value pair. The key and value columns are both editable by double-clicking.
+  </Step>
+  <Step title="Add data">
+    To append new data to the active block, click **Add Data** in the block header. A dialog opens pre-populated with the block's structure:
+    - For a **table** block, the dialog shows one input field per column. Fill in the values and click **Add Row** to append a new row.
+    - For a **list** block, the dialog shows one input field per key defined in the schema. Fill in the values and click **Add Item**.
+
+    If no schema is loaded, the dialog infers the structure from the existing data.
+  </Step>
+  <Step title="Export the workbook">
+    Click **Export** in the sidebar header to download the current workbook state as a formatted `.json` file named after the workbook. The file is a valid Sheet JSON workbook document that you can load back into the visualiser or pass to application code.
+  </Step>
+</Steps>
+
+## Schema validation
+
+Loading a JSON Schema alongside the workbook data enables live validation. Click **Import Schema** and supply the schema file, pasted text, or a URL — the same three-tab dialog used for data import.
+
+Once a schema is active, the visualiser runs a validation pass after every data change (debounced by 300 ms). Validation checks each cell against the field's declared type, null-allowed flag, and optional constraints including `minimum`, `maximum`, `minLength`, `maxLength`, `pattern`, and `enum`.
+
+Cells that fail validation are highlighted with a red background. The block header shows a count of errors in the current block, and the schema badge in the sidebar turns red for any sheet or block with outstanding violations. An alert banner above the grid lists the total error count and instructs you to inspect the highlighted cells for details.
+
+To remove the schema without clearing the workbook data, click **Remove Schema** in the sidebar.
+
+## URL-based auto-import
+
+The visualiser accepts `data_url` and `schema_url` query parameters. When both are present in the URL, the page fetches and imports the data and schema automatically on load:
+
+```
+/sheet-visualiser?data_url=https://example.com/workbook.json&schema_url=https://example.com/schema.json
+```
+
+This is useful for linking directly to a pre-loaded view from a CI pipeline, documentation page, or internal tool.
+
+## Supported data types and validation rules
+
+| JSON Schema type | Validation behaviour |
+|---|---|
+| `string` | Any value is accepted; `minLength`, `maxLength`, and `pattern` are enforced when set |
+| `number` | Value must be parseable as a finite number; `minimum` and `maximum` are enforced |
+| `integer` | Value must be a whole number; `minimum` and `maximum` are enforced |
+| `boolean` | Value must be `"true"` or `"false"` (case-insensitive) |
+| `object` | Value must be parseable as a JSON object |
+| `array` | Value must be parseable as a JSON array |
+| `null` (in type union) | Permits empty or absent cells for that field |
+
+<Note>
+  The Sheet Visualiser stores loaded workbooks in your browser's IndexedDB database. Data persists across browser sessions and page reloads and is never sent to a server. However, it is local to the device and browser profile — you will not see the same workbooks on a different machine or in a different browser. Clear the **sheet-tools-db** IndexedDB database in your browser's developer tools if you want to remove all stored workbooks.
+</Note>
